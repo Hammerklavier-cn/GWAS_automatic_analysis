@@ -6,22 +6,28 @@
 
 # import libraries
 ## standard libraries
-import pprint
 import os, logging, sys, argparse
 from typing import Literal
-from args_setup import myargs
 
 ## self-defined libraries
+from args_setup import myargs
+from gwas_check import file_format_check
+from Classes import FileManagement
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s"
 )
 
+logging.debug(f"{os.getcwd()=}")
+
 # argsparse
 ## set up argsparse
 parser = myargs.setup()
+args = parser.parse_args()
 
 ## check args
 analysis_mode: Literal["single", "multi"]
 analysis_mode, source_file_name = myargs.check(parser)
-##
+
+# file management
+FMT = FileManagement(args.file_name)

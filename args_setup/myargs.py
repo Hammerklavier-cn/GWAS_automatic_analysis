@@ -5,6 +5,8 @@ import argparse
 from typing import Literal
 import logging, os
 
+from matplotlib.pylab import f
+
 def setup():
     parser = argparse.ArgumentParser()
     ### determine single SNP or multiple SNP analysis mode
@@ -20,7 +22,7 @@ def setup():
     ### designate source file. Currently .vcf and .bed, .ped file is supported.
     parser.add_argument(
         "--file-name", type=str, required=True,
-        help="target file name. It can either be .vcf(.gz) file or plink format files (i.e., .bed, or .ped file)."
+        help="target file name. It can either be .vcf(.gz) file or plink format files (i.e., .bed, or .ped file). It can be either relative path or absolute path."
     )
     ### designate plink executable file path. If not designate, one in PATH will be used.
     parser.add_argument(
@@ -50,9 +52,11 @@ def check(parser: ArgumentParser):
         os._exit(2)
     ### check if sorce file is valid
     source_file_name: str
-    if not os.path.isfile(f"args.file_name"):
+    if not os.path.isfile(args.file_name):
+        logging.debug(f"{os.path.isfile(f"{args.file_name}")=}")
         parser.error(f"{args.file_name} is not a valid file!")
         os._exit(1)
     else:
         source_file_name = args.file_name
+        logging.debug("Valid source file path")
     return analysis_mode, source_file_name
