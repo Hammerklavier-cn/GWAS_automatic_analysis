@@ -27,7 +27,7 @@ args = parser.parse_args()
 
 ## check args
 analysis_mode: Literal["single", "multi"]
-analysis_mode, source_file_name = myargs.check(parser)
+analysis_mode, source_file_name, plink_path = myargs.check(parser)
 
 # file management
-FMT = FileManagement(args.file_name)
+FMT = FileManagement(source_file_name, plink_path)

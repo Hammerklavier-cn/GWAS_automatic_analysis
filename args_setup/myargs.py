@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser, Namespace
 import argparse
+import shutil
 from typing import Literal
 import logging, os
 
@@ -59,4 +60,17 @@ def check(parser: ArgumentParser):
     else:
         source_file_name = args.file_name
         logging.debug("Valid source file path")
-    return analysis_mode, source_file_name
+    ### check plink
+    plink_path: str
+    if args.plink_path:
+        plink_path = shutil.which(args.plink_path)
+        if plink_path is None:
+            logging.error("%s is not a valid plink executable path!", args.plink_path)
+            parser.error("`--plink-path` requires a valid plink executable path!")
+    else:
+        plink_path = shutil.which("plink")
+        if plink_path is None:
+            logging.error("plink executable not found in PATH!")
+            parser.error("plink executable not found in PATH!")
+    logging.info("plink executable path: %s", plink_path)
+    return analysis_mode, source_file_name, plink_path
