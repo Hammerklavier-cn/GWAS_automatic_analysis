@@ -11,46 +11,61 @@ class FileManagement(object):
         """
         self.absolute_path = os.path.abspath(file_path)
         self.file_dir = os.path.dirname(self.absolute_path)
-        self.file_name, self.original_format = os.path.splitext(self.absolute_path)
+        self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
         logging.debug(
             "File is located in %s. File name is %s, format is %s", 
-                self.file_dir, self.file_name, self.original_format
+                self.file_dir, self.file_name_root, self.original_ext
         )
         
         self.plink = os.path.abspath(plink_path)
         pass
     
     def source_standardisation(self):
-        # convert .vcf to plink binary format
-        if self.original_format in [".vcf", ".vcf.gz"]:
+        """
+        Convert .vcf to plink binary format.
+        It will generate a `.bed`, a `.fam` and a `.bim` file (or symlink).
+        """
+        
+        if self.original_ext in [".vcf", ".vcf.gz"]:
             process = subprocess.run(
                 [
                     self.plink, 
-                    "--vcf", self.file_name+self.original_format,
+                    "--vcf", self.file_name_root+self.original_ext,
                     "--make bed", 
-                    "--out", self.file_name + "standardised"
+                    "--out", self.file_name_root + "_standardised"
                 ],
                 check=True,
                 capture_output=True
             )
-        elif self.original_format == ".bed":
+        elif self.original_ext == ".bed":
             try:
                 for i in [".bed", ".fam", ".bim"]:
-                    os.symlink(self.file_name+i,
-                            self.file_name+"standardised"+i)
-                    if not os.path.isfile(os.path.realpath()):
-                        raise Exception("The symlink created just now is invalid!")
+                    if not os.path.isfile(os.path.realpath(self.file_name_root + ".fam")):
+                        raise Exception(f"`{self.file_name_root}.fam` does not exist!")
+                    os.symlink(self.file_name_root + i,
+                            self.file_name_root + "_standardised" + i)
+                    if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{i}")):
+                        raise Exception(f"The symlink `{self.file_name_root}_standardised{i}` is invalid!")
             except Exception as err:
                 logging.error(
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
-                os._exit(-1)
-        elif self.original_format == ".ped":
+                os.exit(-1)
+        elif self.original_ext == ".ped":
+            process = subprocess.run(
+                [
+                    self.plink,
+                    "--file", self.file_name_root + self.original_ext,
+                    "--make-bed",
+                    "--out", self.file_name_root
+                ],
+                check=True,
+                capture_output=True
+            )
             pass
         else:
             logging.fatal("Unsupported format! Format check should be done earlier. \
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
-            os._exit(-1)
-    
+            os.exit(1)
