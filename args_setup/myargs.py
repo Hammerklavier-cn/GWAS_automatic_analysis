@@ -6,8 +6,6 @@ import shutil
 from typing import Literal
 import logging, os
 
-from matplotlib.pylab import f
-
 def setup():
     parser = argparse.ArgumentParser()
     ### determine single SNP or multiple SNP analysis mode
@@ -61,7 +59,7 @@ def check(parser: ArgumentParser):
         source_file_name = args.file_name
         logging.debug("Valid source file path")
     ### check plink
-    plink_path: str
+    plink_path: str | None
     if args.plink_path:
         plink_path = shutil.which(args.plink_path)
         if plink_path is None:
