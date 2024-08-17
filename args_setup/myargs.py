@@ -28,6 +28,10 @@ def setup():
         "--plink-path", type=str,
         help="`plink` executable file path. If not assigned, one in PATH will be used. Note: This programme is only designed for plink v1.90."
     )
+    parser.add_argument(
+        "--phenotype", type=str, default=None,
+        help="csv file which contains phenotype data. Default is None."
+    )
     return parser
 
 def check(parser: ArgumentParser):
@@ -71,4 +75,12 @@ def check(parser: ArgumentParser):
             logging.error("plink executable not found in PATH!")
             parser.error("plink executable not found in PATH!")
     logging.info("plink executable path: %s", plink_path)
+    ### check phenotype
+    if args.phenotype is None and \
+        not (source_file_name.endswitch(".vcf") 
+             or source_file_name.endswitch(".vcf.gz")):
+        parser.error(
+            "missign --phenotype option. \
+            You must specific a file containing phenotype data as genotype data is in `.vcf` format!")
+    
     return analysis_mode, source_file_name, plink_path
