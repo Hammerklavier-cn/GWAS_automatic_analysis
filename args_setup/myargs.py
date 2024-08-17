@@ -21,7 +21,7 @@ def setup():
     ### designate source file. Currently .vcf and .bed, .ped file is supported.
     parser.add_argument(
         "--file-name", type=str, required=True,
-        help="target file name. It can either be .vcf(.gz) file or plink format files (i.e., .bed, or .ped file). It can be either relative path or absolute path."
+        help="target file name. It can either be .vcf(.gz) file or plink format files (must end with .bed, or .ped file). It can be either relative path or absolute path."
     )
     ### designate plink executable file path. If not designate, one in PATH will be used.
     parser.add_argument(
