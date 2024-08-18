@@ -4,7 +4,7 @@
     This is an automatic single and multiple SNP -- phenotype association analysis script.
 """
 
-# import libraries
+# import neccesary libraries
 ## standard libraries
 import os, logging, sys, argparse
 from typing import Literal
@@ -31,3 +31,4 @@ analysis_mode, source_file_name, plink_path = myargs.check(parser)
 
 # file management
 FMT = FileManagement(source_file_name, plink_path)
+FMT.source_standardisation()
