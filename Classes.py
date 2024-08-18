@@ -12,6 +12,13 @@ class FileManagement(object):
         self.absolute_path = os.path.abspath(file_path)
         self.file_dir = os.path.dirname(self.absolute_path)
         self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
+        if self.original_ext == ".gz":
+            if self.file_name_root.endswith(".vcf"):
+                self.file_name_root = os.path.splitext(self.file_name_root)[0]
+                self.original_ext = ".vcf.gz"
+            else:
+                logging.error("This input file is not a compressed .vcf file!")
+                raise Exception(f"expected a `.vcf.gz` file. Input file is {file_path}")
         logging.debug(
             "File is located in %s. File name is %s, format is %s", 
                 self.file_dir, self.file_name_root, self.original_ext
