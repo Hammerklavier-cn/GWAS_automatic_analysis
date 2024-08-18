@@ -9,9 +9,10 @@ class FileManagement(object):
         Args:
             file_path (str): relative or absolute path of source file.
         """
-        self.absolute_path = os.path.abspath(file_path)
-        self.file_dir = os.path.dirname(self.absolute_path)
-        self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
+        self.relative_path = os.path.abspath(file_path)
+        self.file_dir = os.path.dirname(self.relative_path)
+        self.file_name_root, self.original_ext = os.path.splitext(self.relative_path)
+        self.output_name_root = os.path.basename(self.file_name_root)
         if self.original_ext == ".gz":
             if self.file_name_root.endswith(".vcf"):
                 self.file_name_root = os.path.splitext(self.file_name_root)[0]
@@ -34,15 +35,19 @@ class FileManagement(object):
         """
         
         if self.original_ext in [".vcf", ".vcf.gz"]:
+            command = [
+                self.plink, 
+                "--vcf", self.file_name_root+self.original_ext,
+                "--make-bed", 
+                "--vcf-half-call", "missing",
+                "--out", self.output_name_root + "_standardised"
+            ]
             process = subprocess.run(
-                [
-                    self.plink, 
-                    "--vcf", self.file_name_root+self.original_ext,
-                    "--make bed", 
-                    "--out", self.file_name_root + "_standardised"
-                ],
+                command,
                 check=True,
-                capture_output=True
+                stdout=True,
+                stderr=True,
+                text=True
             )
         elif self.original_ext == ".bed":
             try:
@@ -50,9 +55,9 @@ class FileManagement(object):
                     if not os.path.isfile(os.path.realpath(self.file_name_root + ".fam")):
                         raise Exception(f"`{self.file_name_root}.fam` does not exist!")
                     os.symlink(self.file_name_root + i,
-                            self.file_name_root + "_standardised" + i)
+                            self.output_name_root + "_standardised" + i)
                     if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{i}")):
-                        raise Exception(f"The symlink `{self.file_name_root}_standardised{i}` is invalid!")
+                        raise Exception(f"The symlink `{self.output_name_root}_standardised{i}` is invalid!")
             except Exception as err:
                 logging.error(
                     "An error occurred when creating symlink for standardised plink binary file: %s",
@@ -66,14 +71,14 @@ class FileManagement(object):
                         self.plink,
                         "--file", self.file_name_root + self.original_ext,
                         "--make-bed",
-                        "--out", self.file_name_root
+                        "--out", self.output_name_root
                     ],
                     check=True,
                     capture_output=True
                 )
             else:
                 logging.error(
-                    f"Expecting a `.map` file with the same root of {self.absolute_path}!"
+                    f"Expecting a `.map` file with the same root of {self.relative_path}!"
                 )
                 os.exit(1)
             pass
