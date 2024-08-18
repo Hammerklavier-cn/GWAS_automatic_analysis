@@ -49,11 +49,7 @@ class FileManagement(object):
             ]
             process = subprocess.run(
                 command,
-                command,
                 check=True,
-                stdout=True,
-                stderr=True,
-                text=True
                 stdout=True,
                 stderr=True,
                 text=True
@@ -67,13 +63,11 @@ class FileManagement(object):
                             self.output_name_temp_root + "_standardised" + i)
                     if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{i}")):
                         raise Exception(f"The symlink `{self.output_name_root}_standardised{i}` is invalid!")
-                        raise Exception(f"The symlink `{self.output_name_root}_standardised{i}` is invalid!")
             except Exception as err:
                 logging.error(
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
-                os.exit(-2)
                 os.exit(-2)
         elif self.original_ext == ".ped":
             if os.path.isfile(f"{self.file_name_root}.map"):
