@@ -58,21 +58,27 @@ class FileManagement(object):
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
-                os.exit(-1)
+                os.exit(-2)
         elif self.original_ext == ".ped":
-            process = subprocess.run(
-                [
-                    self.plink,
-                    "--file", self.file_name_root + self.original_ext,
-                    "--make-bed",
-                    "--out", self.file_name_root
-                ],
-                check=True,
-                capture_output=True
-            )
+            if os.path.isfile(f"{self.file_name_root}.map"):
+                process = subprocess.run(
+                    [
+                        self.plink,
+                        "--file", self.file_name_root + self.original_ext,
+                        "--make-bed",
+                        "--out", self.file_name_root
+                    ],
+                    check=True,
+                    capture_output=True
+                )
+            else:
+                logging.error(
+                    f"Expecting a `.map` file with the same root of {self.absolute_path}!"
+                )
+                os.exit(1)
             pass
         else:
             logging.fatal("Unsupported format! Format check should be done earlier. \
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
-            os.exit(1)
+            os.exit(-1)
