@@ -46,19 +46,18 @@ def check(parser: ArgumentParser):
         logging.info(f"To analyse association between phenotype and {args.multiple} SNPs...")
         analysis_mode = "multi"
         logging.fatal("`--multiple` mode is still a feature function!")
-        os._exit(1)
+        os.exit(11)
     elif args.single:
         logging.info(f"To analyse association between phenotype and single SNP...")
         analysis_mode = "single"
     else:
         logging.fatal("Defects in args check algorithm! Please report this to q5vsx3@163.com.")
-        os._exit(2)
+        os.exit(-1)
     ### check if sorce file is valid
     source_file_name: str
     if not os.path.isfile(args.file_name):
-        logging.debug(f"{os.path.isfile(f"{args.file_name}")=}")
+        logging.debug(f"{os.path.isfile(f'{args.file_name}')=}")
         parser.error(f"{args.file_name} is not a valid file!")
-        os._exit(1)
     else:
         source_file_name = args.file_name
         logging.debug("Valid source file path")
