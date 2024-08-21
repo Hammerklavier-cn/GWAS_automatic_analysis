@@ -1,3 +1,4 @@
+from ast import Call
 import os, logging
 import subprocess
 
@@ -9,13 +10,13 @@ class FileManagement(object):
         Args:
             file_path (str): relative or absolute path of source file.
         """
-        self.relative_path = os.path.abspath(file_path)
-        self.file_dir = os.path.dirname(self.relative_path)
-        self.file_name_root, self.original_ext = os.path.splitext(self.relative_path)
+        self.absolute_path = os.path.abspath(file_path)
+        self.file_dir = os.path.dirname(self.absolute_path)
+        self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
         self.output_name_root = os.path.basename(self.file_name_root)
         self.output_name_temp_root = os.path.join("./temp",self.output_name_root)
         
-        os.mkdir("./temp")
+        os.makedirs("./temp", exist_ok=True)
         
         
         if self.original_ext == ".gz":
@@ -42,54 +43,84 @@ class FileManagement(object):
         if self.original_ext in [".vcf", ".vcf.gz"]:
             command = [
                 self.plink, 
-                "--vcf", self.file_name_root+self.original_ext,
+                "--vcf", self.file_name_root + self.original_ext,
                 "--make-bed", 
                 "--vcf-half-call", "missing",
                 "--out", self.output_name_temp_root + "_standardised"
             ]
-            process = subprocess.run(
-                command,
-                check=True,
-                stdout=True,
-                stderr=True,
-                text=True
-            )
+            try:
+                process = subprocess.run(
+                    command,
+                    check=True,
+                    stdout=True,
+                    stderr=True,
+                    text=True
+                )
+            except subprocess.CalledProcessError as err:
+                logging.error(
+                    "An error occurred when converting .vcf to plink binary file: %s",
+                    err
+                )
+                os.exit(-2)
+            except Exception as err:
+                logging.error(
+                    "Unexpected error occurred when converting .vcf to plink binary file: %s",
+                    err
+                )
+                os.exit(-3)
+                
         elif self.original_ext == ".bed":
             try:
-                for i in [".bed", ".fam", ".bim"]:
-                    if not os.path.isfile(os.path.realpath(self.file_name_root + ".fam")):
-                        raise Exception(f"`{self.file_name_root}.fam` does not exist!")
-                    os.symlink(self.file_name_root + i,
-                            self.output_name_temp_root + "_standardised" + i)
-                    if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{i}")):
-                        raise Exception(f"The symlink `{self.output_name_root}_standardised{i}` is invalid!")
+                for ext in [".bed", ".fam", ".bim"]:
+                    if not os.path.isfile(os.path.realpath(self.file_name_root + ext)):
+                        raise Exception(f"`{self.file_name_root}{ext}` does not exist!")
+                    os.symlink(self.file_name_root + ext,
+                            self.output_name_temp_root + "_standardised" + ext)
+                    if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{ext}")):
+                        raise Exception(f"The symlink `{self.output_name_root}_standardised{ext}` is invalid!")
             except Exception as err:
                 logging.error(
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
                 os.exit(-2)
+                
         elif self.original_ext == ".ped":
             if os.path.isfile(f"{self.file_name_root}.map"):
-                process = subprocess.run(
-                    [
-                        self.plink,
-                        "--file", self.file_name_root + self.original_ext,
-                        "--make-bed",
-                        "--out", self.output_name_temp_root
-                    ],
-                    check=True,
-                    capture_output=True
-                )
+                try:
+                    process = subprocess.run(
+                        [
+                            self.plink,
+                            "--file", self.file_name_root + self.original_ext,
+                            "--make-bed",
+                            "--out", self.output_name_temp_root
+                        ],
+                        check=True,
+                        stdout=True,
+                        stderr=True,
+                        text=True
+                    )
+                except subprocess.CalledProcessError as err:
+                    logging.error(
+                        "An error occurred when converting .ped to plink binary file: %s",
+                        err
+                    )
+                    os.exit(-2)
+                except Exception as err:
+                    logging.error(
+                        "Unexpected error occurred when converting .ped to plink binary file: %s",
+                        err
+                    )
+                    os.exit(-3)
             else:
                 logging.error(
-                    f"Expecting a `.map` file with the same root of {self.relative_path}!"
+                    f"Expecting a `.map` file with the same root of {self.absolute_path}!"
                 )
                 os.exit(1)
             pass
+
         else:
             logging.fatal("Unsupported format! Format check should be done earlier. \
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
-            os.exit(-1)
             os.exit(-1)

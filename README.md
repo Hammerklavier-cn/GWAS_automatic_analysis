@@ -10,6 +10,14 @@ Script which is expected to perform GWAS wholly automatically.
 
 ## 异常退出序号  --  Exit Code
 
+-3: 意料之外的错误。
+
+-3: Unexpected error.
+
+-2: 未能成功创建必要的链接。
+
+-2: failed to create necessary links.
+
 -1：程序设计缺陷。
 
 -1: defect in design.
@@ -21,6 +29,10 @@ Script which is expected to perform GWAS wholly automatically.
 1: Unsupported input file format.
 
 - P.S. Input file is expected to end with `.vcf`, `.vcf.gz`, `.bed` or `.ped`.
+
+2: plink 执行失败。
+
+2: plink execution failed.
 
 11: 功能尚未实现
 
