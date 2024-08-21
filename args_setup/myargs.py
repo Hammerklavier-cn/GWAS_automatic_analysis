@@ -28,9 +28,20 @@ def setup():
         "--plink-path", type=str,
         help="`plink` executable file path. If not assigned, one in PATH will be used. Note: This programme is only designed for plink v1.90."
     )
+    ### designate phenotype file path.
     parser.add_argument(
         "--phenotype", type=str, default=None,
-        help="csv file which contains phenotype data. Default is None."
+        help="csv/tsv/xls(x) file which contains phenotype data. Default is None."
+    )
+    ### designate ethnic info file path.
+    parser.add_argument(
+        "--ethnic", type=str, default=None,
+        help="csv/tsv/xls(x) file which contains ethnic info. Default is None."
+    )
+    ### designate reference file path of serial number of ethnic.
+    parser.add_argument(
+        "--ethnic-reference", type=str, default="./myutil/ethnic_serial_reference.tsv",
+        help="csv/tsv/xls(x) file which contains ethnic-serial reference. Default is `./myutil/ethnic_serial_reference.tsv`."
     )
     return parser
 
