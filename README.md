@@ -39,6 +39,10 @@ Script which is expected to perform GWAS wholly automatically.
 
 2: plink execution failed.
 
+3: 文件读取失败
+
+3: Failed to read file.
+
 11: 功能尚未实现
 
 ## 注  --  Post Script
