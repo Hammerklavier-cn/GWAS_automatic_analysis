@@ -8,6 +8,11 @@
 
 Script which is expected to perform GWAS wholly automatically.
 
+## 运行环境  --  Environment
+
+- Python 3.8+
+- numpy, pandas, scipy, matplotlib, seaborn, openpyxl
+
 ## 异常退出序号  --  Exit Code
 
 -3: 意料之外的错误。
