@@ -15,6 +15,9 @@ class Test(unittest.TestCase):
                     os.path.dirname(os.path.dirname(__file__)), "test")
                 )
             )
+
+    def test_ethnic_grouping(self):
+        pass
         
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -49,13 +49,26 @@ def divide_pop_by_ethnic(
         if re.match(pattern, col_name, re.IGNORECASE):
             eth_col_name = col_name
             break
+    else:
+        logging.error("No '*ethnic*' column found in %s", ethnic_info_path)
+        os.exit(4)
     eth_info.rename(columns={eth_col_name: "ethnic_code"}, inplace=True)
+    pattern = r".*meaning.*|.*ethnic.*"
+    for col_name in eth_ref.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            eth_ref_col_name = col_name
+            break
+    else:
+        logging.error("No '*meaning*|*ethnic*' column found in %s", reference_path)
+        os.exit(4)
+    eth_ref.rename(columns={eth_ref_col_name: "ethnic_name"}, inplace=True)
+
     ## Join two dataframes by 'ethnic' colomn.
-    pd.merge(eth_info, eth_ref, how="left", left_on="ethnic_code", right_on="meaning")
+    pd.merge(eth_info, eth_ref, how="left", left_on="ethnic_code", right_on="ethnic_name")
     ## Divide population by ethnicity.
     # eth_info = eth_info.groupby("ethnic_info").apply(lambda x: x.sample(frac=1).reset_index(drop=True))
-    
-    
+
+
     for i in range(len(eth_ref)):
         eth_ref.iloc[i, 0] = eth_ref.iloc[i, 0].replace("_", " ")
     pass
