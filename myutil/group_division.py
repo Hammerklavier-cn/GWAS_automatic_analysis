@@ -43,31 +43,55 @@ def divide_pop_by_ethnic(
         os.exit(3)
 
     # Merge individuals' ethnic information with ethnics reference.
-    ## Firstly, recognise 'ethnic' column in ethnic information and reference file.
-    pattern = r".*ethnic.*"
+    ## Firstly, recognise 'ethnic_coding' column in ethnic information file
+    ##  and rename column name.
+    pattern = r".*ethnic.*|.*coding.*|.*code.*"
     for col_name in eth_info.columns:
         if re.match(pattern, col_name, re.IGNORECASE):
             eth_col_name = col_name
             break
     else:
-        logging.error("No '*ethnic*' column found in %s", ethnic_info_path)
+        logging.error(f"No {pattern} column found in %s", ethnic_info_path)
         os.exit(4)
-    eth_info.rename(columns={eth_col_name: "ethnic_code"}, inplace=True)
-    pattern = r".*meaning.*|.*ethnic.*"
+    eth_info.rename(columns={eth_col_name: "ethnic_coding"}, inplace=True)
+    ## Also rename the coding column from the reference file.
+    pattern = r".*coding.*|.*code.*"
     for col_name in eth_ref.columns:
         if re.match(pattern, col_name, re.IGNORECASE):
-            eth_ref_col_name = col_name
+            eth_col_name = col_name
             break
     else:
-        logging.error("No '*meaning*|*ethnic*' column found in %s", reference_path)
+        logging.error(f"No {pattern} column found in %s", reference_path)
         os.exit(4)
-    eth_ref.rename(columns={eth_ref_col_name: "ethnic_name"}, inplace=True)
+    eth_ref.rename(columns={eth_col_name: "ethnic_coding_ref"}, inplace=True)
+    ## Also, rename "ethnic code meaning" to "meaning"
+    pattern = r".*meaning.*|.*mean.*"
+    for col_name in eth_ref.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            eth_col_name = col_name
+            break
+    else:
+        logging.error(f"No {pattern} column found in %s", reference_path)
+        os.exit(4)
+    eth_ref.rename(columns={eth_col_name: "meaning"}, inplace=True)
 
     ## Join two dataframes by 'ethnic' colomn.
-    pd.merge(eth_info, eth_ref, how="left", left_on="ethnic_code", right_on="ethnic_name")
+    merged_eth = pd.merge(eth_info, eth_ref, how="left", left_on="ethnic_code", right_on="ethnic_coding")
     ## Divide population by ethnicity.
+    ### Divide population into small ethnic groups and save list of individuals in each group.
+    ethnic_names = set(eth_info["meaning"])
+    for ethnic_name in ethnic_names:    # specify certain ethnic group:
+        ethnic_group = pd.DataFrame(columns=merged_eth.columns)
+        for index, row in merged_eth.iterrows():
+            if row["ethnic_code"] == ethnic_name:
+                ethnic_group = pd.concat([ethnic_group, row.to_frame().T], ignore_index=True)
+        # Then write result to a csv file, which should only contain certain columns (IID and perhaps FID?)   
+        
+    new_row = pd.Series(['Tom', 19, 178], index=['Name', 'Age', 'Height'])
+    
     # eth_info = eth_info.groupby("ethnic_info").apply(lambda x: x.sample(frac=1).reset_index(drop=True))
 
+    ### Divide population into large ethnic groups.
 
     for i in range(len(eth_ref)):
         eth_ref.iloc[i, 0] = eth_ref.iloc[i, 0].replace("_", " ")
