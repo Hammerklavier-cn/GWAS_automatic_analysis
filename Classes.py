@@ -35,12 +35,12 @@ class FileManagement(object):
         
         self.plink = os.path.abspath(plink_path)
         
-        self.phenotype_file_path = os.path.realpath(args.phenotype)
-        self.ethnic_info_file_path = os.path.realpath(args.ethnic)
-        self.ethnic_reference_path = os.path.realpath(args.ethnic_reference)
+        self.phenotype_file_path: str = os.path.realpath(args.phenotype)
+        self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
+        self.ethnic_reference_path: str = os.path.realpath(args.ethnic_reference)
         pass
     
-    def source_standardisation(self):
+    def source_standardisation(self) -> None:
         """
         Convert .vcf to plink binary format.
         It will generate a `.bed`, a `.fam` and a `.bim` file (or symlink).
@@ -67,13 +67,13 @@ class FileManagement(object):
                     "An error occurred when converting .vcf to plink binary file: %s",
                     err
                 )
-                os.exit(-2)
+                exit(-2)
             except Exception as err:
                 logging.error(
                     "Unexpected error occurred when converting .vcf to plink binary file: %s",
                     err
                 )
-                os.exit(-3)
+                exit(-3)
                 
         elif self.original_ext == ".bed":
             try:
@@ -89,7 +89,7 @@ class FileManagement(object):
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
-                os.exit(-2)
+                exit(-2)
                 
         elif self.original_ext == ".ped":
             if os.path.isfile(f"{self.file_name_root}.map"):
@@ -111,25 +111,25 @@ class FileManagement(object):
                         "An error occurred when converting .ped to plink binary file: %s",
                         err
                     )
-                    os.exit(-2)
+                    exit(-2)
                 except Exception as err:
                     logging.error(
                         "Unexpected error occurred when converting .ped to plink binary file: %s",
                         err
                     )
-                    os.exit(-3)
+                    exit(-3)
             else:
                 logging.error(
                     f"Expecting a `.map` file with the same root of {self.absolute_path}!"
                 )
-                os.exit(1)
+                exit(1)
             pass
 
         else:
             logging.fatal("Unsupported format! Format check should be done earlier. \
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
-            os.exit(-1)
+            exit(-1)
     
     def ethnic_grouping(self):
         

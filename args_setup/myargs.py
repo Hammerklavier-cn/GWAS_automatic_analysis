@@ -57,13 +57,13 @@ def check(parser: ArgumentParser):
         logging.info(f"To analyse association between phenotype and {args.multiple} SNPs...")
         analysis_mode = "multi"
         logging.fatal("`--multiple` mode is still a feature function!")
-        os.exit(11)
+        exit(11)
     elif args.single:
         logging.info(f"To analyse association between phenotype and single SNP...")
         analysis_mode = "single"
     else:
         logging.fatal("Defects in args check algorithm! Please report this to q5vsx3@163.com.")
-        os.exit(-1)
+        exit(-1)
     ### check if sorce file is valid
     source_file_name: str
     if not os.path.isfile(args.file_name):
@@ -87,8 +87,8 @@ def check(parser: ArgumentParser):
     logging.info("plink executable path: %s", plink_path)
     ### check phenotype
     if args.phenotype is None and \
-        not (source_file_name.endswitch(".vcf") 
-             or source_file_name.endswitch(".vcf.gz")):
+        not (source_file_name.endswith(".vcf") 
+             or source_file_name.endswith(".vcf.gz")):
         parser.error(
             "missign --phenotype option. \
             You must specific a file containing phenotype data as genotype data is in `.vcf` format!"

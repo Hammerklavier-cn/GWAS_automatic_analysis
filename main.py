@@ -13,6 +13,7 @@ from typing import Literal
 from args_setup import myargs
 from gwas_check import file_format_check
 from Classes import FileManagement
+from myutil import group_division
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s"
@@ -36,3 +37,8 @@ FMT.source_standardisation()
 
 # group population by ethnicity
 
+ethnic_groups = group_division.divide_pop_by_ethnic(
+    FMT.output_name_temp_root,
+    FMT.ethnic_info_file_path,
+    FMT.ethnic_reference_path
+)
