@@ -13,9 +13,29 @@ Script which is expected to perform GWAS wholly automatically.
 - Python 3.8+
 - numpy, pandas, scipy, matplotlib, seaborn, openpyxl
 
+## 环境配置  --  Environment Configuration
+
+需要自行下载 `plink`，建议使用 v1.9 版本。
+
+可以使用 `setup.bash` 脚本实现一键部署。该脚本会检查你的 python 版本（>= 3.8），生成一个名为 `.venv` 的虚拟环境，并安装必要的库。
+
+You need to download `plink` executable yourself. v1.9 is recommended.
+
+You can deploy the environment simply by running `./setup.bash`. It will check your python version (>= 3.8), generate a virtual environment named `.venv` and install necessary libraries.
+
+## 运行 --  Run
+
+`python3 main.py --your-parameter`
+
 ## 参数说明 --  Parameter
 
-pass
+通过 `python3 main.py -h` 查看。
+
+Usage to be seen by running `python3 main.py -h`.
+
+## 功能测试 --  Test
+
+所有的测试代码以及文件都在 `./testsuite` 中, 包括测试脚本（单元测试和全流程测试），测试用文件和测试结果的预期 SHA256 值。
 
 ## 异常退出序号  --  Exit Code
 
