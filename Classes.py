@@ -1,15 +1,18 @@
+from argparse import Namespace
 from ast import Call
 import os, logging
 import subprocess
 
 
 class FileManagement(object):
-    def __init__(self, file_path: str, plink_path: str) -> None:
+    def __init__(self, args: Namespace) -> None:
         """Get general information of files
 
         Args:
-            file_path (str): relative or absolute path of source file.
+            args (Namespace): Namespace object, which contains all arguments.
         """
+        file_path = args.file_name
+        plink_path = args.plink_path
         self.absolute_path = os.path.abspath(file_path)
         self.file_dir = os.path.dirname(self.absolute_path)
         self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
@@ -17,7 +20,6 @@ class FileManagement(object):
         self.output_name_temp_root = os.path.join("./temp",self.output_name_root)
         
         os.makedirs("./temp", exist_ok=True)
-        
         
         if self.original_ext == ".gz":
             if self.file_name_root.endswith(".vcf"):
@@ -32,6 +34,10 @@ class FileManagement(object):
         )
         
         self.plink = os.path.abspath(plink_path)
+        
+        self.phenotype_file_path = os.path.realpath(args.phenotype)
+        self.ethnic_info_file_path = os.path.realpath(args.ethnic)
+        self.ethnic_reference_path = os.path.realpath(args.ethnic_reference)
         pass
     
     def source_standardisation(self):
@@ -124,3 +130,10 @@ class FileManagement(object):
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
             os.exit(-1)
+    
+    def ethnic_grouping(self):
+        
+        pass
+        
+    def quality_control(self):
+        pass

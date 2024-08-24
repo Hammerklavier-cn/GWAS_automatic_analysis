@@ -91,6 +91,5 @@ def check(parser: ArgumentParser):
              or source_file_name.endswitch(".vcf.gz")):
         parser.error(
             "missign --phenotype option. \
-            You must specific a file containing phenotype data as genotype data is in `.vcf` format!")
-    
-    return analysis_mode, source_file_name, plink_path
+            You must specific a file containing phenotype data as genotype data is in `.vcf` format!"
+        )

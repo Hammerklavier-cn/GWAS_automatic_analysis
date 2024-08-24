@@ -26,9 +26,13 @@ parser = myargs.setup()
 args = parser.parse_args()
 
 ## check args
-analysis_mode: Literal["single", "multi"]
-analysis_mode, source_file_name, plink_path = myargs.check(parser)
+myargs.check(parser)
 
 # file management
-FMT = FileManagement(source_file_name, plink_path)
+FMT = FileManagement(args)
+
+# standardise source file
 FMT.source_standardisation()
+
+# group population by ethnicity
+
