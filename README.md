@@ -37,6 +37,8 @@ Usage to be seen by running `python3 main.py -h`.
 
 所有的测试代码以及文件都在 `./testsuite` 中, 包括测试脚本（单元测试和全流程测试），测试用文件和测试结果的预期 SHA256 值。
 
+测试将在 `./test/` 中运行，运行结束后会自动删除其中的文件。
+
 ## 异常退出序号  --  Exit Code
 
 -3: 意料之外的错误。
