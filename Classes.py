@@ -1,6 +1,6 @@
 from argparse import Namespace
 from ast import Call
-import os, logging
+import os, logging, sys
 import subprocess
 
 
@@ -67,13 +67,13 @@ class FileManagement(object):
                     "An error occurred when converting .vcf to plink binary file: %s",
                     err
                 )
-                exit(-2)
+                sys.exit(-2)
             except Exception as err:
                 logging.error(
                     "Unexpected error occurred when converting .vcf to plink binary file: %s",
                     err
                 )
-                exit(-3)
+                sys.exit(-3)
                 
         elif self.original_ext == ".bed":
             try:
@@ -89,7 +89,7 @@ class FileManagement(object):
                     "An error occurred when creating symlink for standardised plink binary file: %s",
                     err
                 )
-                exit(-2)
+                sys.exit(-2)
                 
         elif self.original_ext == ".ped":
             if os.path.isfile(f"{self.file_name_root}.map"):
@@ -111,25 +111,25 @@ class FileManagement(object):
                         "An error occurred when converting .ped to plink binary file: %s",
                         err
                     )
-                    exit(-2)
+                    sys.exit(-2)
                 except Exception as err:
                     logging.error(
                         "Unexpected error occurred when converting .ped to plink binary file: %s",
                         err
                     )
-                    exit(-3)
+                    sys.exit(-3)
             else:
                 logging.error(
                     f"Expecting a `.map` file with the same root of {self.absolute_path}!"
                 )
-                exit(1)
+                sys.exit(1)
             pass
 
         else:
             logging.fatal("Unsupported format! Format check should be done earlier. \
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
-            exit(-1)
+            sys.exit(-1)
     
     def ethnic_grouping(self):
         

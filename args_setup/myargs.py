@@ -4,7 +4,7 @@ from argparse import ArgumentParser, Namespace
 import argparse
 import shutil
 from typing import Literal
-import logging, os
+import logging, os, sys
 
 def setup():
     parser = argparse.ArgumentParser()
@@ -57,13 +57,13 @@ def check(parser: ArgumentParser):
         logging.info(f"To analyse association between phenotype and {args.multiple} SNPs...")
         analysis_mode = "multi"
         logging.fatal("`--multiple` mode is still a feature function!")
-        exit(11)
+        sys.exit(11)
     elif args.single:
         logging.info(f"To analyse association between phenotype and single SNP...")
         analysis_mode = "single"
     else:
         logging.fatal("Defects in args check algorithm! Please report this to q5vsx3@163.com.")
-        exit(-1)
+        sys.exit(-1)
     ### check if sorce file is valid
     source_file_name: str
     if not os.path.isfile(args.file_name):

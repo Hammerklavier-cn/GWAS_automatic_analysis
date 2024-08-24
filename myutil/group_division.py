@@ -2,7 +2,7 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 from threading import Thread
-import logging, os
+import logging, os, sys
 from multiprocessing import Process
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s: %(message)s")
@@ -37,10 +37,10 @@ def divide_pop_by_ethnic(
             eth_info = pd.read_excel(ethnic_info_path)
         else:
             logging.error("Unsupported file format: %s", os.path.splitext(ethnic_info_path)[-1])
-            exit(1)
+            sys.exit(1)
     except Exception as e:
         logging.error("An error occurred while reading %s: %s", ethnic_info_path, e)
-        exit(3)
+        sys.exit(3)
 
     # Merge individuals' ethnic information with ethnics reference.
     ## Firstly, recognise 'ethnic_coding' column in ethnic information file
@@ -52,7 +52,7 @@ def divide_pop_by_ethnic(
             break
     else:
         logging.error(f"No {pattern} column found in %s", ethnic_info_path)
-        exit(4)
+        sys.exit(4)
     eth_info.rename(columns={eth_col_name: "ethnic_coding"}, inplace=True)
     ## rename ID to IID
     pattern = r".*id.*"
@@ -62,7 +62,7 @@ def divide_pop_by_ethnic(
             break
     else:
         logging.error(f"No {pattern} column found in %s", ethnic_info_path)
-        exit(4)
+        sys.exit(4)
     eth_info.rename(columns={id_col_name: "IID"}, inplace=True)
     ## Also rename the coding column from the reference file.
     pattern = r".*coding.*|.*code.*"
@@ -72,7 +72,7 @@ def divide_pop_by_ethnic(
             break
     else:
         logging.error(f"No {pattern} column found in %s", reference_path)
-        exit(4)
+        sys.exit(4)
     eth_ref.rename(columns={eth_col_name: "ethnic_coding_ref"}, inplace=True)
     ## Also, rename "ethnic code meaning" to "meaning"
     pattern = r".*meaning.*|.*mean.*"
@@ -82,7 +82,7 @@ def divide_pop_by_ethnic(
             break
     else:
         logging.error(f"No {pattern} column found in %s", reference_path)
-        exit(4)
+        sys.exit(4)
     eth_ref.rename(columns={eth_col_name: "meaning"}, inplace=True)
 
     ## Join two dataframes by 'ethnic' colomn.
