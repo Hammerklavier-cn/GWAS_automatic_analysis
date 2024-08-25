@@ -38,7 +38,7 @@ FMT.source_standardisation()
 # group population by ethnicity
 
 ethnic_groups = group_division.divide_pop_by_ethnic(
-    FMT.output_name_temp_root,
+    FMT.working_file,
     FMT.ethnic_info_file_path,
     FMT.ethnic_reference_path
 )

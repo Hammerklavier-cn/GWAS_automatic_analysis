@@ -33,7 +33,7 @@ class FileManagement(object):
                 self.file_dir, self.file_name_root, self.original_ext
         )
         
-        self.plink = os.path.abspath(plink_path)
+        self.plink = plink_path
         
         self.phenotype_file_path: str = os.path.realpath(args.phenotype)
         self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
@@ -130,10 +130,19 @@ class FileManagement(object):
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
             sys.exit(-1)
-    
+    def phenotype_standardisation(self):
+        self.set_working_file(f"{self.output_name_temp_root}_standardised")
+
     def ethnic_grouping(self):
         
         pass
         
     def quality_control(self):
         pass
+    
+    def set_working_file(self, file_root: str) -> None:
+        # check
+        if not os.path.exists(f"{file_root}.bed"):
+            logging.error("The file %s does not exist!", file_root)
+            sys.exit(-1)
+        self.working_file = file_root
