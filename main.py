@@ -30,15 +30,21 @@ args = parser.parse_args()
 myargs.check(parser)
 
 # file management
-FMT = FileManagement(args)
+fm = FileManagement(args)
 
 # standardise source file
-FMT.source_standardisation()
+fm.source_standardisation()
 
 # group population by ethnicity
 
 ethnic_groups = group_division.divide_pop_by_ethnic(
-    FMT.working_file,
-    FMT.ethnic_info_file_path,
-    FMT.ethnic_reference_path
+    fm,
+    fm.working_file,
+    fm.ethnic_info_file_path,
+    fm.ethnic_reference_path
 )
+logging.info(ethnic_groups)
+
+# quality control
+for ethnic_name, file_path in ethnic_groups:
+    pass

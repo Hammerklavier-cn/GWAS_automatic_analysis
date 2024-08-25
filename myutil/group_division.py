@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 from threading import Thread
 import logging, os, sys
 from multiprocessing import Process
+from Classes import FileManagement
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s: %(message)s")
 def divide_pop_by_ethnic(
+        fm: FileManagement,
         input_name: str, 
         ethnic_info_path: str, 
         reference_path: str = "./myutil/ethnic_serial_reference.tsv"
@@ -27,14 +28,14 @@ def divide_pop_by_ethnic(
     list[list[str, str]]
         [`ethnic_name`, `file_path`].
     """
-    
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
-        eth_ref = pd.read_csv(reference_path, sep=r"\s+")
+        eth_ref = pd.read_csv(reference_path, sep="\t", dtype=pd.StringDtype())
         if ethnic_info_path.endswith(".tsv") or ethnic_info_path.endswith("csv"):
             eth_info = pd.read_csv(ethnic_info_path, sep=r"\s+")
         elif ethnic_info_path.endswith(".xlsx") or ethnic_info_path.endswith(".xls"):
-            eth_info = pd.read_excel(ethnic_info_path)
+            eth_info = pd.read_excel(ethnic_info_path, dtype=pd.StringDtype())
         else:
             logging.error("Unsupported file format: %s", os.path.splitext(ethnic_info_path)[-1])
             sys.exit(1)
@@ -86,26 +87,35 @@ def divide_pop_by_ethnic(
     eth_ref.rename(columns={eth_col_name: "meaning"}, inplace=True)
 
     ## Join two dataframes by 'ethnic' colomn.
-    merged_eth = pd.merge(eth_info, eth_ref, how="inner", left_on="ethnic_code", right_on="ethnic_coding")
+    logging.info("Joining %s.fam with ethnic information...", input_name)
+    merged_eth = pd.merge(eth_info, eth_ref, how="inner", left_on="ethnic_coding", right_on="ethnic_coding_ref")
     ## Divide population by ethnicity.
     group_list: list[list[str]] = []
     ### Divide population into small ethnic groups and save list of individuals in each group.
-    ethnic_names = set(eth_info["meaning"])
+    ethnic_names = set(eth_ref["meaning"])
+    fam = pd.read_csv(f"{input_name}.fam", sep=r"\s+", header=None, usecols=[0, 1], engine="c", dtype=pd.StringDtype()) 
+    fam.columns = pd.Index(["FID", "IID"])
+    print("merged_eth", merged_eth)
+    merged_fam = pd.merge(fam, merged_eth, how="inner", left_on="IID", right_on="IID", suffixes=(None,"_right"))
+    print("merged fam: \n", merged_fam)
     for ethnic_name in ethnic_names:    # specify certain ethnic group:
-        '''
-        # depricated low efficiency code.
-        ethnic_group = pd.DataFrame(columns=merged_eth.columns)
-        for index, row in merged_eth.iterrows():
-            if row["ethnic_code"] == ethnic_name:
-                ethnic_group = pd.concat([ethnic_group, row.to_frame().T], ignore_index=True)'''
-        ethnic_group = merged_eth[merged_eth["meaning"] == ethnic_name]
+        logging.info(f"Dividing population by ethnicity: {ethnic_name}...")
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
-        fam = pd.read_csv(f"{input_name}.fam", sep="\s+", header=None, usecols=[0, 1], engine="c") 
-        fam.columns = pd.Index(["FID", "IID"])
-        merged_fam = pd.merge(fam, ethnic_group, how="inner", left_on="IID", right_on="IID", suffixes=(None,"_right"))
-        merged_fam["FID", "IID"].to_csv(f"{input_name}_{ethnic_name}.csv", sep="\t", index=False, header=True)
+        merged_fam[merged_fam["meaning"] == ethnic_name].loc[:,["FID", "IID"]].to_csv(f"{input_name}_{ethnic_name}.csv", sep="\t", index=False, header=True)
         
-        group_list.append([ethnic_name, f"{input_name}_{ethnic_name}.csv"])
+        ## use plink `--keep` parameter to filter individuals.
+        plink_cmd = f"plink --bfile {input_name} --keep {input_name}_{ethnic_name}.csv --make-bed --out {input_name}_{ethnic_name}"
+        plink_cmd = [
+            fm.plink,
+            "--bfile", input_name,
+            "--keep", f"{input_name}_{ethnic_name}.csv",
+            "--make-bed",
+            "--out", f"{input_name}_{ethnic_name}"
+        ]
+        
+        logging.info("Successfully divided population by ethnicity: %s", ethnic_name)
+        
+        group_list.append([ethnic_name, f"{input_name}_{ethnic_name}"])
 
     ### Divide population into large ethnic groups.
     

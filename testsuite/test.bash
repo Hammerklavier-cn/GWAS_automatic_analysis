@@ -2,7 +2,7 @@ plink_path="plink"
 file_name="../testsuite/STAB2.vcf.gz"
 phenotype="mydata3.csv"
 ethnic="../testsuite/Ethnic background.xlsx"
-ethnic_ref="../testsuite/myutil/ethnic_serial_reference.tsv"
+ethnic_ref="../myutil/ethnic_serial_reference.tsv"
 
 cd "$(dirname "$0")"    # 文件所在目录
 mkdir -p ../test/

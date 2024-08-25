@@ -33,7 +33,7 @@ class FileManagement(object):
                 self.file_dir, self.file_name_root, self.original_ext
         )
         
-        self.plink = plink_path
+        self.plink: str = plink_path
         
         self.phenotype_file_path: str = os.path.realpath(args.phenotype)
         self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
@@ -130,8 +130,10 @@ class FileManagement(object):
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
             sys.exit(-1)
-    def phenotype_standardisation(self):
+            
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
+    def phenotype_standardisation(self):
+        pass
 
     def ethnic_grouping(self):
         
