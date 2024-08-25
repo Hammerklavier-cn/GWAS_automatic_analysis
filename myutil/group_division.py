@@ -1,4 +1,5 @@
 import re
+import subprocess
 import pandas as pd
 import matplotlib.pyplot as plt
 from threading import Thread
@@ -112,6 +113,12 @@ def divide_pop_by_ethnic(
             "--make-bed",
             "--out", f"{input_name}_{ethnic_name}"
         ]
+        
+        subprocess.run(
+            plink_cmd,
+            check=True,
+            stderr=True
+        )
         
         logging.info("Successfully divided population by ethnicity: %s", ethnic_name)
         
