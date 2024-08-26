@@ -96,9 +96,7 @@ def divide_pop_by_ethnic(
     ethnic_names = set(eth_ref["meaning"])
     fam = pd.read_csv(f"{input_name}.fam", sep=r"\s+", header=None, usecols=[0, 1], engine="c", dtype=pd.StringDtype()) 
     fam.columns = pd.Index(["FID", "IID"])
-    print("merged_eth", merged_eth)
     merged_fam = pd.merge(fam, merged_eth, how="inner", left_on="IID", right_on="IID", suffixes=(None,"_right"))
-    print("merged fam: \n", merged_fam)
     for ethnic_name in ethnic_names:    # specify certain ethnic group:
         logging.info(f"Dividing population by ethnicity: {ethnic_name}...")
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
@@ -107,7 +105,6 @@ def divide_pop_by_ethnic(
         )
         
         ## use plink `--keep` parameter to filter individuals.
-        plink_cmd = f"plink --bfile {input_name} --keep {input_name}_{ethnic_name}.csv --make-bed --out {input_name}_{ethnic_name}"
         plink_cmd = [
             fm.plink,
             "--bfile", input_name,
@@ -132,3 +129,23 @@ def divide_pop_by_ethnic(
     #### to be implemented yet.
 
     return group_list
+
+def divide_pop_by_gender(
+    fm,
+    input_name: str,
+) -> list[list[str]]:
+    """
+    Divide population by gender.
+    
+    # Parameters:
+    
+    **fm** (FileManagement): _An instance of `FileManagement` class, containing information from argparse._
+    
+    **input_name** (str):_The name of input plink files (without extension)._
+    
+    # Returns:
+    
+    list[list[str]]: _A list of lists, containing [`gender`, `relating file path`]._
+    """
+    
+    return [["gender","file_path"]] # place holder for mypy check
