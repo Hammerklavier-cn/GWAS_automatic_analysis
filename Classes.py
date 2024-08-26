@@ -59,9 +59,8 @@ class FileManagement(object):
                 process = subprocess.run(
                     command,
                     check=True,
-                    stdout=True,
-                    stderr=True,
-                    text=True
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT
                 )
             except subprocess.CalledProcessError as err:
                 logging.error(
@@ -104,8 +103,8 @@ class FileManagement(object):
                             "--out", self.output_name_temp_root
                         ],
                         check=True,
-                        stdout=True,
-                        stderr=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.STDOUT,
                         text=True
                     )
                 except subprocess.CalledProcessError as err:

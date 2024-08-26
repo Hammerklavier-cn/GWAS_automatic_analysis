@@ -102,7 +102,9 @@ def divide_pop_by_ethnic(
     for ethnic_name in ethnic_names:    # specify certain ethnic group:
         logging.info(f"Dividing population by ethnicity: {ethnic_name}...")
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
-        merged_fam[merged_fam["meaning"] == ethnic_name].loc[:,["FID", "IID"]].to_csv(f"{input_name}_{ethnic_name}.csv", sep="\t", index=False, header=True)
+        merged_fam[merged_fam["meaning"] == ethnic_name].loc[:,["FID", "IID"]].to_csv(
+            f"{input_name}_{ethnic_name}.csv", sep="\t", index=False, header=True
+        )
         
         ## use plink `--keep` parameter to filter individuals.
         plink_cmd = f"plink --bfile {input_name} --keep {input_name}_{ethnic_name}.csv --make-bed --out {input_name}_{ethnic_name}"
@@ -116,8 +118,8 @@ def divide_pop_by_ethnic(
         
         subprocess.run(
             plink_cmd,
-            stdout=None,
-            stderr=None,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
             check=True,
         )
         
