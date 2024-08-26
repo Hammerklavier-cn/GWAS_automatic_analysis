@@ -47,6 +47,7 @@ class FileManagement(object):
         """
         
         if self.original_ext in [".vcf", ".vcf.gz"]:
+            logging.info("Converting .vcf to plink binary format... This may take a long time.")
             command = [
                 self.plink, 
                 "--vcf", self.file_name_root + self.original_ext,
@@ -74,6 +75,7 @@ class FileManagement(object):
                     err
                 )
                 sys.exit(-3)
+            logging.info("Conversion completed.")
                 
         elif self.original_ext == ".bed":
             try:

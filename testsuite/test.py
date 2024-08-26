@@ -26,8 +26,8 @@ class Test(unittest.TestCase):
 
     def test_files_for_tests_deprecated(self):
         # at present, which shall be replaced:
-        self.assertTrue(os.path.exists("../testsuit/Ethnic background.xlsx"))
-        self.assertTrue(os.path.exists("../testsuit/Red blood cell count.xlsx"))
+        self.assertTrue(os.path.exists("../testsuite/Ethnic background.xlsx"))
+        self.assertTrue(os.path.exists("../testsuite/Red blood cell count.xlsx"))
 
     @unittest.expectedFailure
     def test_files_for_tests(self):

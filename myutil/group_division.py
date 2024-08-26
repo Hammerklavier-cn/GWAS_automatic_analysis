@@ -29,7 +29,7 @@ def divide_pop_by_ethnic(
     list[list[str, str]]
         [`ethnic_name`, `file_path`].
     """
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
         eth_ref = pd.read_csv(reference_path, sep="\t", dtype=pd.StringDtype())
@@ -116,8 +116,9 @@ def divide_pop_by_ethnic(
         
         subprocess.run(
             plink_cmd,
+            stdout=None,
+            stderr=None,
             check=True,
-            stderr=True
         )
         
         logging.info("Successfully divided population by ethnicity: %s", ethnic_name)
