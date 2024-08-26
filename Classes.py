@@ -105,7 +105,6 @@ class FileManagement(object):
                         check=True,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.STDOUT,
-                        text=True
                     )
                 except subprocess.CalledProcessError as err:
                     logging.error(
