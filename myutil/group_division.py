@@ -131,7 +131,7 @@ def divide_pop_by_ethnic(
     return group_list
 
 def divide_pop_by_gender(
-    fm,
+    fm: FileManagement,
     input_name: str,
 ) -> list[list[str]]:
     """
