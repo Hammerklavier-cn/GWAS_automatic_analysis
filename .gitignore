@@ -106,9 +106,7 @@ venv.bak/
 # plink files
 
 # phenotype files
-*.csv
-*.csv.xz
 
 # test files
-/test
+/test/*
 ./testsuite/.fuse_hidden*
