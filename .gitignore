@@ -104,12 +104,6 @@ venv.bak/
 .mypy_cache/
 
 # plink files
-*.vcf.gz
-*.vcf
-*.ped
-*.bed
-*.fam
-*.bim
 
 # phenotype files
 *.csv
