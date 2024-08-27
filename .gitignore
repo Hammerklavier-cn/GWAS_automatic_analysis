@@ -106,6 +106,7 @@ venv.bak/
 # plink files
 
 # phenotype files
+testsuite/mydata*.csv*
 
 # test files
 /test/*
