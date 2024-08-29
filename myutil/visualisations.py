@@ -129,7 +129,7 @@ def hardy_weinberg(
     plt.hist(hwe, bins=10)
     plt.xlabel("p value")
     plt.ylabel("Frequency / Intercept")
-    plt.title("Histogram of HWE from {ethnic} {gender} data set")
+    plt.title(f"Histogram of HWE from {ethnic} {gender} data set")
     plt.savefig(f"{save_path_name}.png", dpi=300)
     
     plt.clf()
@@ -183,6 +183,6 @@ def minor_allele_frequency(
     )
 
     plt.hist(freq_file["ALT_FREQS"],bins=100,range=[0.000001,1])
-    plt.title("MAF check")
+    plt.title(f"MAF check of {ethnic} {gender} data set")
     plt.savefig(f"{input_name}.png", dpi=300)
     plt.clf()
