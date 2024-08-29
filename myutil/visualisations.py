@@ -3,7 +3,10 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from Classes import FileManagement
+
 def missing(
+    fm: FileManagement,
     input_name: str,
     save_path_name: str,
     ethnic: str | None = None,
@@ -36,7 +39,7 @@ def missing(
     logging.info("Calculating proportions of missing data of %s %s data set", ethnic, gender)
     try:
         command = [
-            "plink", 
+            fm.plink, 
             "--bfile", input_name, 
             "--missing", 
             "--out", save_path_name
@@ -81,6 +84,7 @@ def missing(
     plt.clf()
 
 def hardy_weinberg(
+    fm: FileManagement,
     input_name: str,
     save_path_name: str,
     ethnic: str | None = None,
@@ -94,12 +98,16 @@ def hardy_weinberg(
         **save_path_name** (str): _Path to save the visualisations (without suffix and extension)._
         **ethnic** (str): _Ethnic group of the data set._
         **gender** (str): _Gender of the data set._
+    
+    Generate Files:
+        **${save_path_name}.hwe**: _p-value and other statistical information of Hardy Weinberg Equilibrium._
+        **${save_path_name}.png**: _Visualisation of p-value of HWE._
     """
     # Calculate HWE.
     logging.info("Calculating p-value of HWE")
     try:
         command = [
-            "plink",
+            fm.plink,
             "--bfile", input_name,
             "--hardy",
             "--out", input_name
@@ -125,7 +133,7 @@ def hardy_weinberg(
     plt.savefig(f"{save_path_name}.png", dpi=300)
     
     plt.clf()
-    
+    '''
     # Zoomed version. Focusing on the severe deviating SNPs.
     zoomed = pd.read_csv(f"{input_name}_zoomhwe.csv", sep=r"\s+", engine="c", header=None, usecols=[8])
     plt.hist(zoomed, bins=20)
@@ -133,5 +141,48 @@ def hardy_weinberg(
     plt.ylabel("Frequency / Intercept")
     plt.title(f"Histogram of HWE from {ethnic} {gender} data set: severely deviating SNPs only")
     plt.savefig(f"{save_path_name}_zoomhwe.png", dpi=300)
-    
+    '''
+    plt.clf()
+
+def minor_allele_frequency(
+    fm: FileManagement,
+    input_name: str,
+    save_path_name: str,
+    ethnic: str | None = None,
+    gender: Literal["Men", "Women"] | None = None
+) -> None:
+    """
+    Visualise minor allele frequency.
+
+    Args:
+        **input_name** (str): _Name of the input file._
+        **save_path_name** (str): _Path to save the visualisations (without suffix and extension)._
+        **ethnic** (str): _Ethnic group of the data set._
+        **gender** (str): _Gender of the data set._
+    """
+    try:
+        command = [
+            fm.plink,
+            "--bfile", input_name,
+            "--freq",
+            "--out", save_path_name
+        ]
+        subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=None,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error running plink: {e}")
+        sys.exit(2)
+    logging.info("Finished Calculation")
+
+    freq_file = pd.read_csv(
+        f"{input_name}.afreq", sep="\t", engine="pyarrow",usecols=["ALT_FREQS"]
+    )
+
+    plt.hist(freq_file["ALT_FREQS"],bins=100,range=[0.000001,1])
+    plt.title("MAF check")
+    plt.savefig(f"{input_name}.png", dpi=300)
     plt.clf()

@@ -14,6 +14,7 @@ from args_setup import myargs
 from gwas_check import file_format_check
 from Classes import FileManagement
 from myutil import group_division
+import myutil.visualisations as vislz
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s"
