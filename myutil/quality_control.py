@@ -40,6 +40,7 @@ def filter_high_missingness(
             "Unexpected error occurred: %s", e
         )
         sys.exit(-3)
+    logging.info("Missingness filtering completed.")
     
 def filter_maf(
     fm: FileManagement,
@@ -79,6 +80,7 @@ def filter_maf(
             "Unexpected error occurred: %s", e
         )
         sys.exit(-3)
+    logging.info("MAF filtering completed.")
     
 def filter_hwe(
     fm: FileManagement,
@@ -119,3 +121,4 @@ def filter_hwe(
             "Unexpected error occurred: %s", e
         )
         sys.exit(-3)
+    logging.info("HWE filtering completed.")
