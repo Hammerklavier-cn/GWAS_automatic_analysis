@@ -1,9 +1,14 @@
 import os, sys, logging, subprocess
 from typing import Literal
 import matplotlib.pyplot as plt
+import matplotlib
 import pandas as pd
+import numpy as np
 
 from Classes import FileManagement
+
+matplotlib.use('Agg')
+
 
 def missing(
     fm: FileManagement,
@@ -186,3 +191,60 @@ def minor_allele_frequency(
     plt.title(f"MAF check of {ethnic} {gender} data set")
     plt.savefig(f"{input_name}.png", dpi=300)
     plt.clf()
+
+
+# 修改了关联性分析可视化的代码，能简单的在服务器上运行
+def assoc_visualisation(file_path, threshold=10e-4):
+    if not file_path.endswith('qassoc'):
+        return '文件错误'
+    file_name = os.path.basename(file_path)
+
+    a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
+    a_m["ID"] = list(range(a_m.shape[0]))
+
+    colors = list(range(a_m.shape[0]))
+    x = a_m["ID"]
+    y = -np.log10(a_m["P"])
+
+    t_pd = a_m.loc[a_m["P"] < threshold, :]
+    # print(t_pd)
+
+    ## 曼哈顿图 (Manhattan Plot)
+    plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
+    plt.figure(figsize=[10, 5], dpi=300)
+    plt.scatter(x, y, s=2, c=y, cmap='viridis', marker="o")
+
+    # 添加标注
+    for _, row_ in t_pd.iterrows():
+        plt.text(row_["ID"], -np.log10(row_["P"]), row_["SNP"],
+                 rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
+
+    plt.title("Manhattan Plot of Assoc Result of British Males", fontsize=20)
+    plt.colorbar(label='-log10(P-value)')
+
+    # 调整边界
+    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+    plt.tight_layout()  # 自动调整布局以避免重叠和超出画面
+    plt.savefig(f"{file_name}_Manhattan.png")
+    plt.close()
+
+    ## QQ图 (QQ-Plot)
+    plt.figure(figsize=[5, 5], dpi=300)
+    plt.style.use('dark_background')  # 设置类似 Seaborn 的黑色背景样式
+
+    # 理论 -log10(P) 值
+    x = np.linspace(0.5 / a_m.shape[0], 1 - 0.5 / a_m.shape[0], a_m.shape[0])
+    sorted_p_values = -np.log10(a_m["P"].sort_values(ascending=True))
+
+    plt.scatter(-np.log10(x), sorted_p_values, marker="^", facecolors="none", edgecolors="b")
+
+    # 添加 y=x 的参考线
+    max_val = max(-np.log10(x).max(), sorted_p_values.max())
+    plt.plot([0, max_val], [0, max_val], color="#E53528", lw=1)
+
+    plt.xlabel("Theoretical -log10(P) Value")
+    plt.ylabel("Observed -log10(P) Value")
+    plt.title("QQ-Plot of Assoc Result of British Males", fontsize=15)
+    plt.savefig(f"{file_name}_QQ.png", dpi=300)
+    plt.close()
+    print('已输出至：f"{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
