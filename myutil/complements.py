@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 
+# 分割表格，并且只提取了所有表型第一次采样的数据
 def phenotype_complement(
         input_file,
         output_prefix='table/RD4', # 将会在当前目录下，创建table文件夹，里面创建一系列RD4开头的csv文件
