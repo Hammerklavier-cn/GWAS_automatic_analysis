@@ -213,12 +213,20 @@ def divide_pop_by_gender(
 
     # divide plink file by gender
     gender_list: list[list[str]] = []
+    ###############################################
+    ## 再想想，这里真的是 `in merged_sex_info`吗？ ##
+    ###############################################
     for sex_coding in merged_sex_info:
         logging.info(f'Dividing population by gender:{sex_coding}...')
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
         merged_fam[merged_fam["meaning"] == sex_coding].loc[:,["FID", "IID"]].to_csv(
             f"{input_name}_{sex_coding}.csv", sep=r'\s+', index=False, header=True
         )    
+        #######################################################################################
+        ## 我们的目的是用上面的`merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype']`把 ##
+        ## 原来的 `.fam` 替换掉，这个目标达成了吗?                                              ##
+        #######################################################################################
+        
         ## use plink '--keep'parameter to filter individuals.
         plink_cmd_gender = [
             plink_path,
@@ -233,7 +241,9 @@ def divide_pop_by_gender(
             stderr=subprocess.STDOUT,
             check=True,
         )
-    
+        ######################################
+        ## 新文件的 `.fam` 里，有性别信息吗？ ##
+        # ####################################
     logging.info('successfully divided population by gender: %s', sex_coding)
     gender_list.append([sex_coding,f'{input_name}_{sex_coding}'])
 
