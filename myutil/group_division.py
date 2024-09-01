@@ -141,15 +141,101 @@ def divide_pop_by_gender(
     
     # Parameters:
     
-    **fm** (FileManagement): _An instance of `FileManagement` class, containing information from argparse._
+    **plink_path** (str): _Path of plink executable._
     
     **input_name** (str):_The name of input plink files (without extension)._
+
+    **gender_reference_path** (str): _Path of gender-seerial reference file, containing meaning of coding in the gender info file._
+
+    **gender_info_path** (str): _Path of gender info file, containing gender information of each individual.
     
     # Returns:
     
     list[list[str]]: _A list of lists, containing [`gender`, `relating file path`]._
     """
 
+     # generate a .csv file, containing [FID, IID, Sex] columns.
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s")
+    # read files
+    try:
+        gender_ref_df = pd.read_csv(gender_reference_path, sep="\t", dtype=pd.StringDtype())
 
+        if gender_info_path.endswith(".tsv") or gender_info_path.endswith("csv"):
+            gender_info_df = pd.read_csv(gender_info_path, sep=r"\s+")
+        elif gender_info_path.endswith(".xlsx") or gender_info_path.endswith(".xls"):
+            gender_info_df = pd.read_excel(gender_info_path, dtype=pd.StringDtype())
+        else:
+            logging.error("Unsupported file format: %s", os.path.splitext(gender_info_path)[-1])
+            sys.exit(1)
+    except Exception as e:
+        logging.error("An error occurred while reading %s: %s", gender_info_path, e)
+        sys.exit(3)
+
+    pattern = r".*sex.*|.*gender.*"
+    ## rename "coding" column in gender_info_df to "original_sex_coding"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df.rename(
+                columns={col_name: "original_sex_coding"},
+                inplace=True
+            )
+    ## rename "coding" column in gender_ref_df to "sex_coding"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df.rename(
+                columns={col_name: "sex_coding"},
+                inplace=True
+            )
+    ## rename "id" column in gender_info_df to "id_info"
+    pattern = r".*id.*"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df.rename(
+                columns={col_name: "id_info"},
+                inplace=True
+            )
     
+    ## merge gender_serial_reference and gender_info
+    merged_sex_info = pd.merge(
+        gender_info_df, gender_ref_df,
+        how="inner",
+        left_on="original_sex_coding",
+        right_on="sex_coding"
+    )
+
+    ## merge merged_gender_info and .fam and replace the original one
+    fam_df = pd.read_csv(f"{input_name}.fam", sep=r"\s+", dtype=pd.StringDtype(), header=None)
+    fam_df.columns = pd.Index(["FID",'IID','PID','MID','Sex',"Phenotype"])
+    merged_fam = pd.merge(
+        fam_df, merged_sex_info, how='inner', 
+        left_on='IID', right_on="id_info")
+    merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype']
+
+    # divide plink file by gender
+    gender_list: list[list[str]] = []
+    for sex_coding in merged_sex_info:
+        logging.info(f'Dividing population by gender:{sex_coding}...')
+        ## Then write result to a csv file, which should only contain certain columns (FID, IID)
+        merged_fam[merged_fam["meaning"] == sex_coding].loc[:,["FID", "IID"]].to_csv(
+            f"{input_name}_{sex_coding}.csv", sep=r'\s+', index=False, header=True
+        )    
+        ## use plink '--keep'parameter to filter individuals.
+        plink_cmd_gender = [
+            plink_path,
+            '--bfile', merged_fam,
+            '--keep', f'{merged_fam}_{merged_sex_info}.csv',
+            '--make-bed',
+            '--out', f'{merged_fam}_{merged_sex_info}'
+        ]
+        subprocess.run(
+            plink_cmd_gender,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+    
+    logging.info('successfully divided population by gender: %s', sex_coding)
+    gender_list.append([sex_coding,f'{input_name}_{sex_coding}'])
+
+
     return [["gender","file_path"]] # place holder for mypy check
