@@ -131,8 +131,10 @@ def divide_pop_by_ethnic(
     return group_list
 
 def divide_pop_by_gender(
-    fm: FileManagement,
+    plink_path: str,
     input_name: str,
+    gender_reference_path: str,
+    gender_info_path: str
 ) -> list[list[str]]:
     """
     Divide population by gender.
@@ -147,5 +149,7 @@ def divide_pop_by_gender(
     
     list[list[str]]: _A list of lists, containing [`gender`, `relating file path`]._
     """
+
+
     
     return [["gender","file_path"]] # place holder for mypy check
