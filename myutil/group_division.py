@@ -209,43 +209,42 @@ def divide_pop_by_gender(
     merged_fam = pd.merge(
         fam_df, merged_sex_info, how='inner', 
         left_on='IID', right_on="id_info")
-    merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype']
-
+    merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype'].to_csv(
+        f"{input_name}.fam", sep="\t", index=False, header=True
+    )
+    
     # divide plink file by gender
-    gender_list: list[list[str]] = []
-    ###############################################
-    ## 再想想，这里真的是 `in merged_sex_info`吗？ ##
-    ###############################################
-    for sex_coding in merged_sex_info:
-        logging.info(f'Dividing population by gender:{sex_coding}...')
-        ## Then write result to a csv file, which should only contain certain columns (FID, IID)
-        merged_fam[merged_fam["meaning"] == sex_coding].loc[:,["FID", "IID"]].to_csv(
-            f"{input_name}_{sex_coding}.csv", sep=r'\s+', index=False, header=True
-        )    
-        #######################################################################################
-        ## 我们的目的是用上面的`merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype']`把 ##
-        ## 原来的 `.fam` 替换掉，这个目标达成了吗?                                              ##
-        #######################################################################################
-        
-        ## use plink '--keep'parameter to filter individuals.
-        plink_cmd_gender = [
-            plink_path,
-            '--bfile', merged_fam,
-            '--keep', f'{merged_fam}_{merged_sex_info}.csv',
-            '--make-bed',
-            '--out', f'{merged_fam}_{merged_sex_info}'
-        ]
-        subprocess.run(
-            plink_cmd_gender,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
-            check=True,
-        )
-        ######################################
-        ## 新文件的 `.fam` 里，有性别信息吗？ ##
-        # ####################################
-    logging.info('successfully divided population by gender: %s', sex_coding)
-    gender_list.append([sex_coding,f'{input_name}_{sex_coding}'])
-
-
-    return [["gender","file_path"]] # place holder for mypy check
+    output_file_names: list[list[str]] = []
+    logging.info("Filter males...")
+    plink_cmd = [
+        plink_path,
+        "--bfile", input_name,
+        "--filter-males"
+        "--make-bed",
+        "--out", f"{input_name}_male"
+    ]
+    subprocess.run(
+        plink_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+    logging.info("Successfully filtered males.")
+    output_file_names.append(["male", f"{input_name}_male"])
+    logging.info("Filter females...")
+    plink_cmd = [
+        plink_path,
+        "--bfile", input_name,
+        "--filter-females",
+        "--make-bed",
+        "--out", f"{input_name}_female"
+    ]
+    subprocess.run(
+        plink_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+    logging.info("Successfully filtered females.")
+    output_file_names.append(["female", f"{input_name}_female"])
+    return output_file_names # place holder for mypy check
