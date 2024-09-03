@@ -38,9 +38,11 @@ class FileManagement(object):
         self.phenotype_file_path: str = os.path.realpath(args.phenotype)
         self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
         self.ethnic_reference_path: str = os.path.realpath(args.ethnic_reference)
+        self.gender_info_file_path: str = os.path.realpath(args.gender)
+        self.gender_reference_path: str = os.path.realpath(args.gender_reference)
         pass
     
-    def source_standardisation(self) -> None:
+    def source_standardisation(self) -> str:
         """
         Convert .vcf to plink binary format.
         It will generate a `.bed`, a `.fam` and a `.bim` file (or symlink).
@@ -132,6 +134,7 @@ class FileManagement(object):
             sys.exit(-1)
             
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
+        return self.output_name_temp_root
     def phenotype_standardisation(self):
         pass
 

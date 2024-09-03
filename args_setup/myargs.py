@@ -43,6 +43,14 @@ def setup():
         "--ethnic-reference", type=str, default="./myutil/ethnic_serial_reference.tsv",
         help="csv/tsv/xls(x) file which contains ethnic-serial reference. Default is `./myutil/ethnic_serial_reference.tsv`."
     )
+    parser.add_argument(
+        "--gender", type=str, default="",
+        help="csv/tsv/xls(x) file which contains gender info. Default is None."
+    )
+    parser.add_argument(
+        "--gender-reference", type=str, default="./myutil/gender_serial_reference.csv",
+        help="csv/tsv/xls(x) file which contains gender-serial reference. Default is `./myutil/gender_serial_reference.csv`."
+    )
     return parser
 
 def check(parser: ArgumentParser):
