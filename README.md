@@ -56,9 +56,8 @@ Usage to be seen by running `python3 main.py -h`.
 1: 输入文件格式不受支持。
 
 - 注：原始输入文件应以 `.vcf`, `.vcf.gz`, `.bed` 或 `.ped` 结尾。
-·
-1: Unsupported input file format.
-
+  ·
+  1: Unsupported input file format.
 - P.S. Input file is expected to end with `.vcf`, `.vcf.gz`, `.bed` or `.ped`.
 
 2: plink 执行失败。
@@ -68,6 +67,10 @@ Usage to be seen by running `python3 main.py -h`.
 3: 文件读取失败
 
 3: Failed to read file.
+
+4: 文件内容查找失败
+
+4: Failed to find certain contents of a file.
 
 11: 功能尚未实现
 

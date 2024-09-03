@@ -1,5 +1,8 @@
 import os, sys, subprocess, logging
+
+from pandas import StringDtype
 from Classes import FileManagement
+from small_tools import progress_bar
 
 import json
 import os
@@ -11,6 +14,10 @@ import pandas as pd
 
 
 # 分割表格，并且只提取了所有表型第一次采样的数据
+@DeprecationWarning(
+    "This function is deprecated. \
+    Please use `extract_phenotype_info()` instead."
+)
 def phenotype_complement(
         input_file,
         output_prefix='table/RD4', # 将会在当前目录下，创建table文件夹，里面创建一系列RD4开头的csv文件
@@ -87,6 +94,101 @@ def phenotype_complement(
         progress_bar(count, total_count // 10 + 1)
         count += 1
 
+def extract_phenotype_info(
+    input_name: str,
+    pheno_info_path: str
+) -> dict[str, str]:
+    """
+    Extract phenotype information from a file, 
+    generate csvs, containing [FID, IID, phenotype_value].
+    Return a dict of [phenotype_name, generated_csv_path]
+
+    Assert phenotype name with format `f.[number].[number].[number]`,
+    Only the smallest version of first number is used.
+
+    Args:
+        input_name (str):
+            name of plink file (without extension).
+        pheno_info_path (str):
+            path to phenotype information file.
+    Returns:
+        dict (dict[str, str]) : 
+            dict of [phenotype_name, generated_csv_path]
+    Generate Files:
+        %(input_name)s_%(f.*.*).txt"""
+        
+    generated_files: dict[str, str] = {}
+
+    # get header
+    if not pheno_info_path.endswith('.csv'):
+        logging.error("Input file should be a csv file.")
+        sys.exit(1)
+    headers = pd.read_csv(pheno_info_path, nrows=0).iloc[:,0].tolist()
+    accepted_headers: list[str] = []
+    count = 0
+    for header in headers:
+        # show progress bar
+        count += 1
+        progress_bar(f"processing {header}", len(headers), count)
+        
+        if re.match(r'^f\.\d+\.\d+\.\d+$', header):
+            logging.debug("%s is a valid phenotype name", header)
+            for i in range(10):
+                for j in range(10):
+                    if re.match(rf'^f\.\d+\.{i}.{j}', header):
+                        logging.debug("f.%d.%d.%d is accepted", i, j)
+                        accepted_headers.append(header)
+                        break
+                    else:
+                        logging.debug("f.%d.%d.%d is not accepted", i, j)
+        elif re.match(r'^f\.eid.*', header):
+            logging.debug("%s is the header of IID column", header)
+            iid_header = header
+        else:
+            logging.debug("%s is not a valid phenotype name", header)
+    if not iid_header:
+        logging.error("No IID column found")
+        sys.exit(4)
+    logging.info("Accepted phenotype names: %r", accepted_headers)
+
+    fam_df = pd.read_csv(
+        f"{input_name}.fam",
+        usecols=[0,1], sep=r"\s+",
+        dtype=pd.StringDtype()
+    )
+    fam_df.columns = pd.Index(["FID", "IID"])
+
+    # load phenotype data and save them
+    for header in accepted_headers:
+        pheno_df = pd.read_csv(
+            pheno_info_path, 
+            usecols=[iid_header, header], sep=r"\s+",
+            dtype=pd.StringDtype()
+        )
+        # replace NA and other strings with -9
+        pattern = r"^-*\d+\.?\d*$"
+        for i in range(len(pheno_df)):
+            if re.match(pattern, pheno_df.iloc[i, 1]):
+                logging.debug("%s is a valid phenotype number")
+            elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
+                pheno_df.iloc[i, 1] = -9
+                logging.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
+            else:
+                pheno_df.iloc[i, 1] = -9
+                logging.debug("%s is replaced with -9, for it is not a valid number, may be a string.", pheno_df.iloc[i, 1])
+
+        # merge phenotype data with .fam in order to complement FID.
+        pheno_tosave = pd.merge(
+            fam_df, pheno_df, 
+            how="inner", left_on="IID", right_on=iid_header
+        )["FID", "IID", header]
+        pheno_tosave.to_csv(
+            f"{input_name}_{header}.txt",
+            sep='\t', header=True, index=False
+        )
+        generated_files[header] = f"{input_name}_{header}.txt"
+
+    return generated_files
 
 def gender_complement(
     fm: FileManagement,
@@ -111,5 +213,5 @@ def gender_complement(
     
     str: _complemented plink file name_
     """
-    
+    # Note: This function is merged in `devide pop by gender``
     return ["complemented_file_name"]  # placeholder
