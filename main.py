@@ -110,15 +110,25 @@ outputs = output_cache
 output_cache = []
 
 ## 2. filter HWE
-logging.info("Filtering HWE...")
-print("outputs:", outputs)
+print("Visualising HWE...")
+for output in outputs:
+    small_tools.progress_bar(
+        f"Visualising HWE for {output}...",
+        len(outputs),
+        outputs.index(output) + 1
+    )
+    vislz.hardy_weinberg(
+        fm,
+        output,
+        os.path.join(os.path.dirname(output), "../",os.path.basename(output)+".png")
+   )
+print("Filtering HWE...")
 for output in outputs:
     small_tools.progress_bar(
         f"Filtering HWE for {output}...",
         len(outputs),
         outputs.index(output) + 1
     )
-    print()
     quality_control.filter_hwe(
         fm,
         output,
@@ -126,11 +136,3 @@ for output in outputs:
     )
     output_cache.append(f"{output}_no_hwe")
 
-
-# group population by ethnicity
-
-
-
-# quality control
-for ethnic_name, file_path in ethnic_groups:
-    pass
