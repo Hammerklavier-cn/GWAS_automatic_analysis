@@ -40,14 +40,14 @@ def missing(
     
     **${save_path_name}_lmiss_visualisation.png**: _Visualisation of missingness of SNPs._
     """
-
+    logging.basicConfig(level=logging.ERROR, format="%(asctime)s -- %(levelname)s -- %(message)s")
     logging.info("Calculating proportions of missing data of %s %s data set", ethnic, gender)
     try:
         command = [
             fm.plink, 
             "--bfile", input_name, 
             "--missing", 
-            "--out", save_path_name
+            "--out", input_name
         ]
         subprocess.run(
             command,

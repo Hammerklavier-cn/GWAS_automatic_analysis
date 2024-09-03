@@ -25,6 +25,8 @@ class FileManagement(object):
             if self.file_name_root.endswith(".vcf"):
                 self.file_name_root = os.path.splitext(self.file_name_root)[0]
                 self.original_ext = ".vcf.gz"
+                self.output_name_root = os.path.splitext(self.output_name_root)[0]
+                self.output_name_temp_root = os.path.splitext(self.output_name_temp_root)[0]
             else:
                 logging.error("This input file is not a compressed .vcf file!")
                 raise Exception(f"expected a `.vcf.gz` file. Input file is {file_path}")
@@ -85,8 +87,8 @@ class FileManagement(object):
                         raise Exception(f"`{self.file_name_root}{ext}` does not exist!")
                     os.symlink(self.file_name_root + ext,
                             self.output_name_temp_root + "_standardised" + ext)
-                    if not os.path.isfile(os.path.realpath(f"{self.file_name_root}_standardised{ext}")):
-                        raise Exception(f"The symlink `{self.output_name_root}_standardised{ext}` is invalid!")
+                    if not os.path.isfile(os.path.realpath(f"{self.file_name_temp_root}_standardised{ext}")):
+                        raise Exception(f"The symlink `{self.output_name_temp_root}_standardised{ext}` is invalid!")
             except Exception as err:
                 logging.error(
                     "An error occurred when creating symlink for standardised plink binary file: %s",
@@ -134,7 +136,7 @@ class FileManagement(object):
             sys.exit(-1)
             
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
-        return self.output_name_temp_root
+        return f"{self.output_name_temp_root}_standardised"
     def phenotype_standardisation(self):
         pass
 

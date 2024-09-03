@@ -29,7 +29,7 @@ def divide_pop_by_ethnic(
     list[list[str, str]]
         [`ethnic_name`, `file_path`].
     """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s -- %(levelname)s -- %(message)s")
+    logging.basicConfig(level=logging.ERROR, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
         eth_ref = pd.read_csv(reference_path, sep="\t", dtype=pd.StringDtype())
@@ -155,15 +155,17 @@ def divide_pop_by_gender(
     """
 
      # generate a .csv file, containing [FID, IID, Sex] columns.
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s")
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
+        logging.info("Reading gender reference file...")
         gender_ref_df = pd.read_csv(gender_reference_path, sep="\t", dtype=pd.StringDtype())
 
+        logging.info("Reading gender info file...")
         if gender_info_path.endswith(".tsv") or gender_info_path.endswith("csv"):
             gender_info_df = pd.read_csv(gender_info_path, sep=r"\s+")
         elif gender_info_path.endswith(".xlsx") or gender_info_path.endswith(".xls"):
-            gender_info_df = pd.read_excel(gender_info_path, dtype=pd.StringDtype())
+            gender_info_df = pd.read_excel(gender_info_path, usecols=[0,1], dtype=pd.StringDtype())
         else:
             logging.error("Unsupported file format: %s", os.path.splitext(gender_info_path)[-1])
             sys.exit(1)
@@ -171,6 +173,7 @@ def divide_pop_by_gender(
         logging.error("An error occurred while reading %s: %s", gender_info_path, e)
         sys.exit(3)
 
+    logging.info("rename columns...")
     pattern = r".*sex.*|.*gender.*"
     ## rename "coding" column in gender_info_df to "original_sex_coding"
     for col_name in gender_info_df.columns:
@@ -180,10 +183,19 @@ def divide_pop_by_gender(
                 inplace=True
             )
     ## rename "coding" column in gender_ref_df to "sex_coding"
+    pattern = r"^.*sex.*$|^.*gender.*$|^coding$|^code$"
     for col_name in gender_ref_df.columns:
         if re.match(pattern, col_name, re.IGNORECASE):
             gender_ref_df.rename(
                 columns={col_name: "sex_coding"},
+                inplace=True
+            )
+    ## rename "original_coding" to "original_sex_coding"
+    pattern = r".*original.*"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df.rename(
+                columns={col_name: "original_sex_coding"},
                 inplace=True
             )
     ## rename "id" column in gender_info_df to "id_info"
@@ -195,22 +207,26 @@ def divide_pop_by_gender(
                 inplace=True
             )
     
+    #$ print("gender_ref_df:\n", gender_ref_df)
     ## merge gender_serial_reference and gender_info
     merged_sex_info = pd.merge(
         gender_info_df, gender_ref_df,
         how="inner",
         left_on="original_sex_coding",
-        right_on="sex_coding"
+        right_on="original_sex_coding"
     )
 
+    #$ print("merged_sex_info:\n", merged_sex_info)
     ## merge merged_gender_info and .fam and replace the original one
     fam_df = pd.read_csv(f"{input_name}.fam", sep=r"\s+", dtype=pd.StringDtype(), header=None)
     fam_df.columns = pd.Index(["FID",'IID','PID','MID','Sex',"Phenotype"])
     merged_fam = pd.merge(
         fam_df, merged_sex_info, how='inner', 
         left_on='IID', right_on="id_info")
-    merged_fam["FID",'IID','PID','MID','sex_coding','Phenoype'].to_csv(
-        f"{input_name}.fam", sep="\t", index=False, header=True
+    #$ print("merged_fam:\n", merged_fam)
+    #$ print(f"{merged_fam.columns.tolist()=}")
+    merged_fam.loc[:,["FID",'IID','sex_coding']].to_csv(
+        f"{input_name}_gender.csv", sep="\t", index=False, header=True
     )
     
     # divide plink file by gender
@@ -219,7 +235,8 @@ def divide_pop_by_gender(
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
-        "--filter-males"
+        "--update-sex", f"{input_name}_gender.csv", 
+        "--filter-males",
         "--make-bed",
         "--out", f"{input_name}_male"
     ]
@@ -235,6 +252,7 @@ def divide_pop_by_gender(
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
+        "--update-sex", f"{input_name}_gender.csv",
         "--filter-females",
         "--make-bed",
         "--out", f"{input_name}_female"

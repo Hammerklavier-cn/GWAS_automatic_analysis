@@ -16,6 +16,7 @@ def filter_high_missingness(
         **save_path_name** (str): Path name of the output file.
         **missingness_threshold** (float): Threshold of missingness rate.
     """
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s -- %(levelname)s -- %(message)s")
     try:
         logging.info(
             "Removing SNPs and individuals with missingness rate of %s.", 
@@ -104,7 +105,7 @@ def filter_hwe(
         command = [
             fm.plink,
             "--bfile", input_path_name,
-            "--hwe", str(hwe_threshold), "midp"
+            "--hwe", str(hwe_threshold), "midp",
             "--make-bed",
             "--out", save_path_name
         ]

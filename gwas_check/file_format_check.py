@@ -1,7 +1,7 @@
 import os, logging
 
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s -- %(levelname)s -- %(message)s"
+    level=logging.WARNING, format="%(asctime)s -- %(levelname)s -- %(message)s"
 )
 
 '''def source_file_check(file_path: str):
