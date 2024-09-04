@@ -89,7 +89,7 @@ for output in outputs:
         output[1],
         os.path.join(os.path.dirname(output[1]), "../",os.path.basename(output[1])+".png")
     )
-print("")
+print()
 logging.info("Visualising missingness finished.")
 ### Filtering
 logging.info("Filtering high missingness...")
@@ -106,7 +106,7 @@ for output in outputs:
         0.02
     )
     output_cache.append(f"{output[1]}_no_miss")
-print("")
+print()
 logging.info("Filtering high missingness finished.")
 
 outputs = output_cache
@@ -123,7 +123,7 @@ for output in outputs:
     vislz.hardy_weinberg(
         fm,
         output,
-        os.path.join(os.path.dirname(output), "../",os.path.basename(output)+".png")
+        os.path.join(os.path.dirname(output), "../",os.path.basename(output))
    )
 print("Filtering HWE...")
 for output in outputs:
@@ -137,5 +137,40 @@ for output in outputs:
         output,
         f"{output}_hwe"
     )
-    output_cache.append(f"{output}_no_hwe")
-
+    output_cache.append(f"{output}_hwe")
+print()
+    
+outputs = output_cache
+output_cache = []
+## 3. filter MAF
+### visualisation
+print("Visualising MAF...")
+for output in outputs:
+    progress_bar.print_progress(
+        f"Visualising MAF for {output}...",
+        len(outputs),
+        outputs.index(output) + 1
+    )
+    vislz.minor_allele_frequency(
+        fm,
+        output,
+        os.path.join(os.path.dirname(output), "../",os.path.basename(output))
+    )
+print()
+### filter MAF
+print("Filtering MAF...")
+for output in outputs:
+    progress_bar.print_progress(
+        f"Filtering MAF for {output}...",
+        len(outputs),
+        outputs.index(output) + 1
+    )
+    quality_control.filter_maf(
+        fm,
+        output,
+        f"{output}_maf",
+        0.005
+    )
+    # 这里应该要进行异常处理
+    output_cache.append(f"{output}_maf")
+print()

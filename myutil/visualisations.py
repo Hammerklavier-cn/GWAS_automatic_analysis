@@ -170,7 +170,7 @@ def minor_allele_frequency(
             fm.plink,
             "--bfile", input_name,
             "--freq",
-            "--out", save_path_name
+            "--out", input_name
         ]
         subprocess.run(
             command,
@@ -184,12 +184,12 @@ def minor_allele_frequency(
     logging.info("Finished Calculation")
 
     freq_file = pd.read_csv(
-        f"{input_name}.afreq", sep="\t", engine="pyarrow",usecols=["ALT_FREQS"]
+        f"{input_name}.frq", sep=r"\s+", engine="c",usecols=["MAF"]
     )
 
-    plt.hist(freq_file["ALT_FREQS"],bins=100,range=[0.000001,1])
+    plt.hist(freq_file["MAF"],bins=20)
     plt.title(f"MAF check of {ethnic} {gender} data set")
-    plt.savefig(f"{input_name}.png", dpi=300)
+    plt.savefig(f"{save_path_name}.png", dpi=300)
     plt.clf()
 
 

@@ -72,10 +72,11 @@ def filter_maf(
         ]
         subprocess.run(command, stdout=subprocess.DEVNULL, stderr=None, check=True)
     except subprocess.CalledProcessError as e:
-        logging.error(
-            "An error occurred when running plink: %s", e
-        )
-        sys.exit(2)
+        if not "12" in str(e):
+            logging.error(
+                "\nAn error occurred when running plink: %s", e
+            )
+            sys.exit(2)
     except Exception as e:
         logging.error(
             "Unexpected error occurred: %s", e

@@ -1,11 +1,4 @@
 import logging
-from typing import Iterable
-import sys
-
-import sys
-
-import sys
-from venv import logger
 
 def progress_bar(message: str, total: int, current: int, bar_length: int = 50, fill: str = '█', printEnd: str = "\r"):
     last_length = 0
