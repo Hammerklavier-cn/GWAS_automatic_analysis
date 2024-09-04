@@ -33,6 +33,9 @@ myargs.check(parser)
 # file management
 fm = FileManagement(args)
 
+# progress bar
+progress_bar = small_tools.ProgressBar()
+
 # standardise source file
 output = fm.source_standardisation()
 outputs = [output]
@@ -52,10 +55,10 @@ else:
     logging.warning("No gender information provided, skipping gender complement.")
 
 # divide population into ethnic groups
-logging.info("Dividing population into ethnic groups...")
+print("Dividing population into ethnic groups...")
 for output in outputs:
-    small_tools.progress_bar(
-        f"Divide {output[1]} into ethnic groups...",
+    progress_bar.print_progress(
+        f"Divide {os.path.relpath(output[1])} into ethnic groups...",
         len(outputs),
         outputs.index(output) + 1
     )
@@ -76,8 +79,8 @@ output_cache = []   # clear the cache
 ### visualisation
 logging.info("Visualising missingness...")
 for output in outputs:
-    small_tools.progress_bar(
-        f"Visualising missingness for {output[1]}...",
+    progress_bar.print_progress(
+        f"Visualising missingness for {os.path.relpath(output[1])}...",
         len(outputs),
         outputs.index(output) + 1
     )
@@ -91,8 +94,8 @@ logging.info("Visualising missingness finished.")
 ### Filtering
 logging.info("Filtering high missingness...")
 for output in outputs:
-    small_tools.progress_bar(
-        f"Filtering high missingness for {output[1]}...",
+    progress_bar.print_progress(
+        f"Filtering high missingness for {os.path.relpath(output[1])}...",
         len(outputs),
         outputs.index(output) + 1
     )
@@ -112,8 +115,8 @@ output_cache = []
 ## 2. filter HWE
 print("Visualising HWE...")
 for output in outputs:
-    small_tools.progress_bar(
-        f"Visualising HWE for {output}...",
+    progress_bar.print_progress(
+        f"Visualising HWE for {os.path.relpath(output)}...",
         len(outputs),
         outputs.index(output) + 1
     )
@@ -124,7 +127,7 @@ for output in outputs:
    )
 print("Filtering HWE...")
 for output in outputs:
-    small_tools.progress_bar(
+    progress_bar.print_progress(
         f"Filtering HWE for {output}...",
         len(outputs),
         outputs.index(output) + 1
