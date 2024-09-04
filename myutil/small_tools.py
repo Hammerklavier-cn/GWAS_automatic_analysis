@@ -1,9 +1,11 @@
+import logging
 from typing import Iterable
 import sys
 
 import sys
 
 import sys
+from venv import logger
 
 def progress_bar(message: str, total: int, current: int, bar_length: int = 50, fill: str = '█', printEnd: str = "\r"):
     current_percentage = current / total
@@ -17,3 +19,25 @@ def progress_bar(message: str, total: int, current: int, bar_length: int = 50, f
     # 输出并确保字符串长度固定
     sys.stdout.write(f'\r|{bar}| {message.ljust(120)} | ({current}/{total})'.ljust(total_length))
     sys.stdout.flush()
+
+def create_logger(
+    name, level=logging.WARNING, 
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+) -> logging.Logger:
+    """
+    Create a logger object with the given name and level.
+    Args:
+        name (str): The name of the logger.
+        level (int): The logging level.
+        format (str): The logging format.
+    Returns:
+        logging.Logger: The logger object.
+    """
+    logger = logging.getLogger(name)
+    if not logger.hasHandlers():
+        logger.setLevel(level)
+        ch = logging.StreamHandler()
+        formatter = logging.Formatter(format)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+    return logger
