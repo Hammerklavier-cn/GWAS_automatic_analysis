@@ -2,7 +2,7 @@ plink_path="plink"
 file_name="../testsuite/STAB2_sample2.vcf.gz"
 ethnic="../testsuite/Ethnic background.xlsx"
 ethnic_ref="../myutil/ethnic_serial_reference.tsv"
-phenotype="../testsuite/pheno3.csv"
+phenotype="../testsuite/pheno_demo.tsv"
 gender="../testsuite/Sex.xlsx"
 gender_ref="../myutil/gender_serial_reference.csv"
 
