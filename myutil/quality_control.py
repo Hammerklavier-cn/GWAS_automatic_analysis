@@ -70,13 +70,13 @@ def filter_maf(
             "--make-bed",
             "--out", save_path_name
         ]
-        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=None, check=True)
+        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     except subprocess.CalledProcessError as e:
         if not "12" in str(e):
             logging.error(
-                "\nAn error occurred when running plink: %s", e
+                "\nWarning: An error occurred when running plink: %s", e
             )
-            sys.exit(2)
+            raise subprocess.CalledProcessError(e.returncode, e.cmd, e.output, e.stderr)
     except Exception as e:
         logging.error(
             "Unexpected error occurred: %s", e

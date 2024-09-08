@@ -1,6 +1,8 @@
 numpy
 matplotlib
+openpyxl
 pandas
 scipy
 seaborn
 pyinstaller
+deprecated

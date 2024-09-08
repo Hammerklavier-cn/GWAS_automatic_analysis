@@ -45,12 +45,8 @@ def quantitive_association(
             stderr=None        
         )
     except subprocess.CalledProcessError as e:
-        print(f"Error occurred while running plink: {e}")
-        sys.exit(2)
+        logging.warning(f"Error occurred while running plink: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         sys.exit(-3)
     logging.info("Quantitative association analysis completed.")
-    
-        
-    

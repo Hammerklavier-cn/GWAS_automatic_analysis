@@ -6,6 +6,7 @@
 
 # import neccesary libraries
 ## standard libraries
+import subprocess
 import os, logging, sys, argparse
 from typing import Literal
 
@@ -13,7 +14,8 @@ from typing import Literal
 from args_setup import myargs
 from gwas_check import file_format_check
 from Classes import FileManagement
-from myutil import group_division, quality_control, small_tools
+from myutil import association_analysis, group_division, quality_control, small_tools
+from myutil.complements import extract_phenotype_info
 import myutil.visualisations as vislz
 
 logging.basicConfig(
@@ -37,6 +39,7 @@ fm = FileManagement(args)
 progress_bar = small_tools.ProgressBar()
 
 # standardise source file
+print("Standardising source file...")
 output = fm.source_standardisation()
 outputs = [output]
 output_cache: list = []
@@ -69,7 +72,7 @@ for output in outputs:
         fm.ethnic_reference_path
     )
     output_cache.extend(output_temp)
-print("")
+print()
 logging.debug(f"{output_cache=}")
 outputs = output_cache
 output_cache = []   # clear the cache
@@ -77,7 +80,7 @@ output_cache = []   # clear the cache
 # QC
 ## 1. filter high missingness
 ### visualisation
-logging.info("Visualising missingness...")
+print("Visualising missingness...")
 for output in outputs:
     progress_bar.print_progress(
         f"Visualising missingness for {os.path.relpath(output[1])}...",
@@ -92,7 +95,7 @@ for output in outputs:
 print()
 logging.info("Visualising missingness finished.")
 ### Filtering
-logging.info("Filtering high missingness...")
+print("Filtering high missingness...")
 for output in outputs:
     progress_bar.print_progress(
         f"Filtering high missingness for {os.path.relpath(output[1])}...",
@@ -125,7 +128,7 @@ for output in outputs:
         output,
         os.path.join(os.path.dirname(output), "../",os.path.basename(output))
    )
-print("Filtering HWE...")
+print("\nFiltering HWE...")
 for output in outputs:
     progress_bar.print_progress(
         f"Filtering HWE for {output}...",
@@ -165,12 +168,53 @@ for output in outputs:
         len(outputs),
         outputs.index(output) + 1
     )
-    quality_control.filter_maf(
-        fm,
-        output,
-        f"{output}_maf",
-        0.005
-    )
+    try:
+        quality_control.filter_maf(
+            fm,
+            output,
+            f"{output}_maf",
+            0.005
+        )
     # 这里应该要进行异常处理
-    output_cache.append(f"{output}_maf")
+    except subprocess.CalledProcessError as e:
+        pass
+    else:
+        output_cache.append(f"{output}_maf")
+outputs = output_cache
+output_cache = []
 print()
+
+### Now we have finished all QC processes.
+### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
+
+print("Splitting phenotype source files...")
+pheno_files = extract_phenotype_info(
+    fm.output_name_temp_root + "_standardised",
+    fm.phenotype_file_path
+)
+print("Performing GWAS analysis & visualisation...")
+os.makedirs("assoc_pictures")
+pheno_files = list(pheno_files.values())
+for pheno_file in pheno_files:
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Calculating association for {pheno_file} and {output}...",
+            len(outputs) * len(pheno_files),
+            pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+        )
+        association_analysis.quantitive_association(
+            fm.plink,
+            output,
+            None,
+            pheno_file,
+            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
+        )
+        progress_bar.print_progress(
+            f"Visualising association for {pheno_file} and {output}...",
+            len(outputs) * len(pheno_files),
+            pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+        )
+        vislz.assoc_visualisation(
+            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}", 
+            os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
+        )

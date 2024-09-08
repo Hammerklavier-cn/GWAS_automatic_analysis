@@ -194,7 +194,7 @@ def minor_allele_frequency(
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
-def assoc_visualisation(file_path, err_2_p: float = 0.05):
+def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
 
     if not file_path.endswith('qassoc'):
         return '文件错误'
@@ -228,7 +228,7 @@ def assoc_visualisation(file_path, err_2_p: float = 0.05):
     # 调整边界
     plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
     plt.tight_layout()  # 自动调整布局以避免重叠和超出画面
-    plt.savefig(f"{file_name}_Manhattan.png")
+    plt.savefig(f"{output_path}_Manhattan.png", dpi=600)
     plt.close()
 
     ## QQ图 (QQ-Plot)
@@ -248,6 +248,6 @@ def assoc_visualisation(file_path, err_2_p: float = 0.05):
     plt.xlabel("Theoretical -log10(P) Value")
     plt.ylabel("Observed -log10(P) Value")
     plt.title("QQ-Plot of Assoc Result of British Males", fontsize=15)
-    plt.savefig(f"{file_name}_QQ.png", dpi=300)
+    plt.savefig(f"{output_path}_QQ.png", dpi=600)
     plt.close()
-    print('已输出至：f"{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
+    # print(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')

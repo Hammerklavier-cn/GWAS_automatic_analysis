@@ -2,7 +2,8 @@ import os, sys, subprocess, logging
 
 from pandas import StringDtype
 from Classes import FileManagement
-from small_tools import progress_bar
+from myutil.small_tools import ProgressBar
+from deprecated.sphinx import deprecated
 
 import json
 import os
@@ -14,15 +15,13 @@ import pandas as pd
 
 
 # 分割表格，并且只提取了所有表型第一次采样的数据
-@DeprecationWarning(
-    "This function is deprecated. \
-    Please use `extract_phenotype_info()` instead."
-)
+@deprecated(reason="Deprecated for it doesn't meet project's requirements", version="1.0")
 def phenotype_complement(
         input_file,
         output_prefix='table/RD4', # 将会在当前目录下，创建table文件夹，里面创建一系列RD4开头的csv文件
         num_cols_per_file=10
 ):
+    progress_bar = ProgressBar()
 
     if not input_file.endswith('.csv'):
         return '输入格式错误'
@@ -118,29 +117,37 @@ def extract_phenotype_info(
         %(input_name)s_%(f.*.*).txt"""
         
     generated_files: dict[str, str] = {}
+    
+    progress_bar = ProgressBar()
 
     # get header
-    if not pheno_info_path.endswith('.csv'):
+    '''if not pheno_info_path.endswith('.csv'):
         logging.error("Input file should be a csv file.")
-        sys.exit(1)
-    headers = pd.read_csv(pheno_info_path, nrows=0).iloc[:,0].tolist()
+        sys.exit(1)'''
+    headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
+    logging.debug("headers: %s", headers)
     accepted_headers: list[str] = []
     count = 0
+    iid_header = None
     for header in headers:
         # show progress bar
         count += 1
-        progress_bar(f"processing {header}", len(headers), count)
+        progress_bar.print_progress(f"processing {header}", len(headers), count)
         
         if re.match(r'^f\.\d+\.\d+\.\d+$', header):
             logging.debug("%s is a valid phenotype name", header)
             for i in range(10):
                 for j in range(10):
                     if re.match(rf'^f\.\d+\.{i}.{j}', header):
+                        i_min = i; j_min = j
                         logging.debug("f.%d.%d.%d is accepted", i, j)
                         accepted_headers.append(header)
                         break
                     else:
                         logging.debug("f.%d.%d.%d is not accepted", i, j)
+                if re.match(rf'^f\.\d+\.{i}.{j}', header):
+                    logging.debug("f.%d.%d.%d is accepted", i, j)
+                    break
         elif re.match(r'^f\.eid.*', header):
             logging.debug("%s is the header of IID column", header)
             iid_header = header
@@ -159,7 +166,10 @@ def extract_phenotype_info(
     fam_df.columns = pd.Index(["FID", "IID"])
 
     # load phenotype data and save them
+    count = 0; print()
     for header in accepted_headers:
+        count += 1
+        progress_bar.print_progress(f"processing {header}", len(accepted_headers), count)
         pheno_df = pd.read_csv(
             pheno_info_path, 
             usecols=[iid_header, header], sep=r"\s+",
@@ -167,21 +177,25 @@ def extract_phenotype_info(
         )
         # replace NA and other strings with -9
         pattern = r"^-*\d+\.?\d*$"
+        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         for i in range(len(pheno_df)):
-            if re.match(pattern, pheno_df.iloc[i, 1]):
+            if pheno_df.iloc[i, 1] == np.nan:
+                pheno_df.iloc[i, 1] = "-9"
+                logging.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
+            elif re.match(pattern, pheno_df.iloc[i, 1]):
                 logging.debug("%s is a valid phenotype number")
             elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
-                pheno_df.iloc[i, 1] = -9
+                pheno_df.iloc[i, 1] = "-9"
                 logging.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
-            else:
-                pheno_df.iloc[i, 1] = -9
-                logging.debug("%s is replaced with -9, for it is not a valid number, may be a string.", pheno_df.iloc[i, 1])
+            '''else:
+                pheno_df.iloc[i, 1] = "-9"
+                logging.debug("%s is replaced with -9, for it is not a valid number, may be a string.", pheno_df.iloc[i, 1])'''
 
         # merge phenotype data with .fam in order to complement FID.
         pheno_tosave = pd.merge(
             fam_df, pheno_df, 
             how="inner", left_on="IID", right_on=iid_header
-        )["FID", "IID", header]
+        ).loc[:,["FID", "IID", header]]
         pheno_tosave.to_csv(
             f"{input_name}_{header}.txt",
             sep='\t', header=True, index=False
