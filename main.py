@@ -215,6 +215,6 @@ for pheno_file in pheno_files:
             pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
         )
         vislz.assoc_visualisation(
-            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}", 
+            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
             os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
         )

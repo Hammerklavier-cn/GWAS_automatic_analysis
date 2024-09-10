@@ -135,6 +135,7 @@ def hardy_weinberg(
     plt.xlabel("p value")
     plt.ylabel("Frequency / Intercept")
     plt.title(f"Histogram of HWE from {ethnic} {gender} data set")
+    plt.tight_layout()
     plt.savefig(f"{save_path_name}.png", dpi=300)
     
     plt.clf()
@@ -189,17 +190,21 @@ def minor_allele_frequency(
 
     plt.hist(freq_file["MAF"],bins=20)
     plt.title(f"MAF check of {ethnic} {gender} data set")
+    plt.tight_layout()
     plt.savefig(f"{save_path_name}.png", dpi=300)
     plt.clf()
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
 def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
+    print("开始关联性分析可视化")
 
-    if not file_path.endswith('qassoc'):
-        return '文件错误'
+    if not os.path.exists(file_path):
+        logging.warning(f"{file_path} does not exist!")
+        return
     file_name = os.path.basename(file_path)
     
+    print("读取文件")
     # calculate threshold
     a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
     a_m["ID"] = list(range(a_m.shape[0]))
@@ -213,6 +218,7 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     # print(t_pd)
 
     ## 曼哈顿图 (Manhattan Plot)
+    print("开始绘制曼哈顿图")
     plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
     plt.figure(figsize=[10, 5], dpi=300)
     plt.scatter(x, y, s=2, c=y, cmap='viridis', marker="o")
@@ -232,6 +238,7 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     plt.close()
 
     ## QQ图 (QQ-Plot)
+    print("开始绘制QQ图")
     plt.figure(figsize=[5, 5], dpi=300)
     plt.style.use('dark_background')  # 设置类似 Seaborn 的黑色背景样式
 
@@ -248,6 +255,7 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     plt.xlabel("Theoretical -log10(P) Value")
     plt.ylabel("Observed -log10(P) Value")
     plt.title("QQ-Plot of Assoc Result of British Males", fontsize=15)
+    plt.tight_layout()
     plt.savefig(f"{output_path}_QQ.png", dpi=600)
     plt.close()
-    # print(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
+    print(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')

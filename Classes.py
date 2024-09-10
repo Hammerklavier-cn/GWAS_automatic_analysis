@@ -87,7 +87,7 @@ class FileManagement(object):
                         raise Exception(f"`{self.file_name_root}{ext}` does not exist!")
                     os.symlink(self.file_name_root + ext,
                             self.output_name_temp_root + "_standardised" + ext)
-                    if not os.path.isfile(os.path.realpath(f"{self.file_name_temp_root}_standardised{ext}")):
+                    if not os.path.isfile(os.path.realpath(f"{self.output_name_temp_root}_standardised{ext}")):
                         raise Exception(f"The symlink `{self.output_name_temp_root}_standardised{ext}` is invalid!")
             except Exception as err:
                 logging.error(

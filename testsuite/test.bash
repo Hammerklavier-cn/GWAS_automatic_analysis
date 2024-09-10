@@ -1,6 +1,6 @@
 plink_path="plink"
 # file_name="../testsuite/STAB2_sample2.vcf.gz"
-file_name="../testsuite/STAB2.vcf.gz"
+file_name="../testsuite/STAB2.bed"
 ethnic="../testsuite/Ethnic background.xlsx"
 ethnic_ref="../myutil/ethnic_serial_reference.tsv"
 phenotype="../testsuite/pheno_demo.tsv"
