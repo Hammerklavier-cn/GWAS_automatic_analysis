@@ -32,9 +32,9 @@ source .venv/bin/activate
 echo "Virtual environment created and activated."
 
 # 安装依赖项
-pip install --upgrade pip
-pip install --upgrade setuptools
+pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --upgrade pip
+pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple--upgrade setuptools
 echo "Installing dependencies..."
-pip3 install -r requirements.txt
+pip3 install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple -r requirements.txt
 echo "Dependencies installed."
 echo "Finished."

@@ -114,3 +114,4 @@ storage/
 # test files
 /test/*
 ./testsuite/.fuse_hidden*
+./testsuite/*.csv.xz

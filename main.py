@@ -18,11 +18,20 @@ from myutil import association_analysis, group_division, quality_control, small_
 from myutil.complements import extract_phenotype_info
 import myutil.visualisations as vislz
 
+## multiprocessing libraries
+from queue import Queue
+from threading import Thread
+from multiprocessing import Process, Event, cpu_count
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures._base import Future as FutureClass
+
+### Note: the logging library should be gradually replaced with self-defined logger
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s -- %(levelname)s -- %(message)s"
 )
+logger = small_tools.create_logger("MainLogger", level=logging.INFO)
 
-logging.debug(f"{os.getcwd()=}")
+logger.info(f"{os.getcwd()=}")
 
 # argsparse
 ## set up argsparse
@@ -43,6 +52,7 @@ print("Standardising source file...")
 output = fm.source_standardisation()
 outputs = [output]
 output_cache: list = []
+output_queue = Queue()
 
 # complete gender information in .fam and divide population into male and female groups.
 if args.gender:
@@ -59,6 +69,25 @@ else:
 
 # divide population into ethnic groups
 print("Dividing population into ethnic groups...")
+
+with ThreadPoolExecutor() as pool:
+    futures: list[FutureClass] = []
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Divide {os.path.relpath(output[1])} into ethnic groups...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        futures.append(
+            pool.submit(group_division.divide_pop_by_ethnic),
+                fm,
+                output[1],
+                fm.ethnic_info_file_path,
+                fm.ethnic_reference_path
+        )
+    output = [future.result(timeout=60) for future in futures]
+
+### The following should be deprecated.
 for output in outputs:
     progress_bar.print_progress(
         f"Divide {os.path.relpath(output[1])} into ethnic groups...",
