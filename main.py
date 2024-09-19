@@ -49,6 +49,7 @@ progress_bar = small_tools.ProgressBar()
 
 # standardise source file
 print("Standardising source file...")
+logger.info("Standardising source file...")
 output = fm.source_standardisation()
 outputs = [output]
 output_cache: list = []
@@ -57,6 +58,7 @@ output_queue = Queue()
 # complete gender information in .fam and divide population into male and female groups.
 if args.gender:
     print("Completing gender information...")
+    logger.info("Completing gender information...")
     outputs = group_division.divide_pop_by_gender(
         fm.plink,
         output,
@@ -70,7 +72,7 @@ else:
 # divide population into ethnic groups
 print("Dividing population into ethnic groups...")
 
-with ThreadPoolExecutor() as pool:
+with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     for output in outputs:
         progress_bar.print_progress(
@@ -79,139 +81,154 @@ with ThreadPoolExecutor() as pool:
             outputs.index(output) + 1
         )
         futures.append(
-            pool.submit(group_division.divide_pop_by_ethnic),
-                fm,
-                output[1],
-                fm.ethnic_info_file_path,
-                fm.ethnic_reference_path
+            pool.submit(
+                group_division.divide_pop_by_ethnic,
+                    fm,
+                    output[1],
+                    fm.ethnic_info_file_path,
+                    fm.ethnic_reference_path
+            )
         )
-    output = [future.result(timeout=60) for future in futures]
-
-### The following should be deprecated.
-for output in outputs:
-    progress_bar.print_progress(
-        f"Divide {os.path.relpath(output[1])} into ethnic groups...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    output_temp = group_division.divide_pop_by_ethnic(
-        fm,
-        output[1],
-        fm.ethnic_info_file_path,
-        fm.ethnic_reference_path
-    )
-    output_cache.extend(output_temp)
+    # This output contains [ethnic_name, output_file_path]
+    for future in futures:
+        outputs.extend(future.result())
+    #print("outputs:", outputs)
+logger.info("Division finished.")
 print()
-logging.debug(f"{output_cache=}")
-outputs = output_cache
-output_cache = []   # clear the cache
 
 # QC
 ## 1. filter high missingness
 ### visualisation
 print("Visualising missingness...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Visualising missingness for {os.path.relpath(output[1])}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    vislz.missing(
-        fm,
-        output[1],
-        os.path.join(os.path.dirname(output[1]), "../",os.path.basename(output[1])+".png")
-    )
+logger.info("Visualising missingness...")
+
+with ProcessPoolExecutor() as pool:
+    futures: list[FutureClass] = []
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Visualising missingness for {os.path.relpath(output[1])}...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        futures.append(
+            pool.submit(
+                vislz.minor_allele_frequency,
+                fm,
+                output[1],
+                os.path.join(os.path.dirname(output[1]), "../",os.path.basename(output[1])+".png")
+            )
+        )
 print()
+
 logging.info("Visualising missingness finished.")
 ### Filtering
 print("Filtering high missingness...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Filtering high missingness for {os.path.relpath(output[1])}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    quality_control.filter_high_missingness(
-        fm,
-        output[1],
-        f"{output[1]}_no_miss",
-        0.02
-    )
-    output_cache.append(f"{output[1]}_no_miss")
-print()
-logging.info("Filtering high missingness finished.")
 
+with ProcessPoolExecutor() as pool:
+    futures: list[FutureClass] = []
+    output_cache = []
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Filtering high missingness for {os.path.relpath(output[1])}...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        futures.append(
+            pool.submit(
+                quality_control.filter_high_missingness,
+                    fm,
+                    output[1],
+                    f"{output[1]}_no_miss",
+                    0.02               
+            )
+        )
+        output_cache.append(f"{output[1]}_no_miss")
+print()
+logger.info("Filtering high missingness finished.")
 outputs = output_cache
 output_cache = []
 
 ## 2. filter HWE
 print("Visualising HWE...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Visualising HWE for {os.path.relpath(output)}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    vislz.hardy_weinberg(
-        fm,
-        output,
-        os.path.join(os.path.dirname(output), "../",os.path.basename(output))
-   )
+with ProcessPoolExecutor() as pool:
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Visualising HWE for {os.path.relpath(output)}...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        pool.submit(
+            vislz.hardy_weinberg,
+            fm,
+            output,
+            os.path.join(os.path.dirname(output), "../",os.path.basename(output))
+        )
 print("\nFiltering HWE...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Filtering HWE for {output}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    quality_control.filter_hwe(
-        fm,
-        output,
-        f"{output}_hwe"
-    )
-    output_cache.append(f"{output}_hwe")
-print()
-    
+with ProcessPoolExecutor() as pool:
+    futures: list[FutureClass] = []
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Filtering HWE for {os.path.relpath(output)}...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        futures.append(
+            pool.submit(
+                quality_control.filter_hwe,
+                fm,
+                output,
+                f"{output}_hwe",
+            )
+        )
+        output_cache.append(f"{output}_hwe")
 outputs = output_cache
 output_cache = []
+logger.info("Filtering HWE finished.")
+print()
+
 ## 3. filter MAF
 ### visualisation
 print("Visualising MAF...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Visualising MAF for {output}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    vislz.minor_allele_frequency(
-        fm,
-        output,
-        os.path.join(os.path.dirname(output), "../",os.path.basename(output))
-    )
+with ProcessPoolExecutor() as pool:
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Visualising MAF for {os.path.relpath(output)}...",
+            len(outputs),
+            outputs.index(output) + 1
+        )
+        pool.submit(
+            vislz.minor_allele_frequency,
+            fm,
+            output,
+            os.path.join(os.path.dirname(output), "../",os.path.basename(output))
+        )
+logger.info("MAF visualisation finished.")
 print()
 ### filter MAF
 print("Filtering MAF...")
-for output in outputs:
-    progress_bar.print_progress(
-        f"Filtering MAF for {output}...",
-        len(outputs),
-        outputs.index(output) + 1
-    )
-    try:
-        quality_control.filter_maf(
-            fm,
-            output,
-            f"{output}_maf",
-            0.005
+with ProcessPoolExecutor() as pool:
+    futures: list[FutureClass] = []
+    for output in outputs:
+        progress_bar.print_progress(
+            f"Filtering MAF for {os.path.relpath(output)}...",
+            len(outputs),
+            outputs.index(output) + 1
         )
-    # 这里应该要进行异常处理
-    except subprocess.CalledProcessError as e:
-        pass
-    else:
+        futures.append(
+            pool.submit(
+                quality_control.filter_maf,
+                fm,
+                output,
+                f"{output}_maf",
+                0.005
+            )
+        )
         output_cache.append(f"{output}_maf")
 outputs = output_cache
 output_cache = []
 print()
+logger.info("Filtering MAF finished.")
+
 
 ### Now we have finished all QC processes.
 ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.

@@ -1,7 +1,8 @@
-import logging
 import subprocess
 import sys
+from myutil import small_tools
 
+logger = small_tools.create_logger("AssociationLogger")
 
 def quantitive_association(
     plink_path: str,
@@ -29,7 +30,7 @@ def quantitive_association(
         output_name (str):
             Name of the output file.
     """
-    logging.info("Performing quantitative association analysis...")
+    logger.info("Performing quantitative association analysis...")
     try:
         command = [
             plink_path,
@@ -45,8 +46,8 @@ def quantitive_association(
             stderr=None        
         )
     except subprocess.CalledProcessError as e:
-        logging.warning(f"Error occurred while running plink: {e}")
+        logger.warning(f"Error occurred while running plink: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         sys.exit(-3)
-    logging.info("Quantitative association analysis completed.")
+    logger.info("Quantitative association analysis completed.")

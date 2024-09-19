@@ -113,5 +113,10 @@ storage/
 
 # test files
 /test/*
-./testsuite/.fuse_hidden*
-./testsuite/*.csv.xz
+/testsuite/.fuse_hidden*
+/testsuite/*.csv.xz
+/testsuite/STAB2.bed
+/testsuite/STAB2.bim
+/testsuite/STAB2.fam
+/testsuite/STAB2.nosex
+/testsuite/STAB2.vcf.gz
