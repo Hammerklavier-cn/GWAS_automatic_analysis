@@ -9,8 +9,9 @@ import json
 import os
 import re
 import sys
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Queue
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import Manager
+from concurrent.futures._base import Future as FutureClass
 
 import numpy as np
 import pandas as pd
@@ -96,6 +97,49 @@ def phenotype_complement(
         progress_bar(count, total_count // 10 + 1)
         count += 1
 
+## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
+def _work_thread(
+    header: str, pattern: str, 
+    generated_files_queue, 
+    fam_df: pd.DataFrame,
+    iid_header: str, 
+    input_name: str,
+    pheno_info_path: str
+):
+    try:
+        logger = create_logger("complementLogger", level=logging.DEBUG)
+        #-- print("\nLaunched")
+        pheno_df = pd.read_csv(
+            pheno_info_path, 
+            usecols=[iid_header, header], sep=r"\s+",
+            dtype=pd.StringDtype()
+        )
+        ### 数据清洗 Replace NA and other strings with -9
+        #### replace NA with "-9"
+        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
+        #### replace all unrecognised strings with "-9"
+        for i in range(len(pheno_df)):
+            if not re.match(pattern, pheno_df.iloc[i, 1]):
+                pheno_df.iloc[i, 1] = "-9"
+                logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
+            else:
+                logger.debug("%s is a valid phenotype number", pheno_df.iloc[i, 1])
+
+        ### merge phenotype data with .fam in order to complement FID
+        pheno_tosave = pd.merge(
+            fam_df, pheno_df, 
+            how="inner", left_on="IID", right_on=iid_header
+        ).loc[:, ["FID", "IID", header]]
+        pheno_tosave.to_csv(
+            f"{input_name}_{header}.txt",
+            sep="\t", index=False
+        )
+        #-- print(f"\ngenerate pheno file {f'{input_name}_{header}.txt'}")
+        generated_files_queue.put(f"{input_name}_{header}.txt")
+
+    except Exception as e:
+        print("\nError: %s", e)
+
 def extract_phenotype_info(
     input_name: str,
     pheno_info_path: str
@@ -142,7 +186,7 @@ def extract_phenotype_info(
         count += 1
         progress_bar.print_progress(f"processing {header}", len(headers), count)
 
-        i_min = np.inf; j_min = np.inf
+        # i_min = np.inf; j_min = np.inf
 
         if re.match(r'^f\.\d+\.\d+\.\d+$', header):
             logger.debug("%s is a valid phenotype name", header)
@@ -152,38 +196,24 @@ def extract_phenotype_info(
             pheno_no = int(match.group('first'))
             i = int(match.group('second'))
             j = int(match.group('third'))
+            #-- print(f"++--++{pheno_no=}, {i=}, {j=}, {last_pheno_no=}, {i_min=}, {j_min=}")
 
+            ## if not save pheno, reset i_min and j_min and last_pheno_no
             if pheno_no != last_pheno_no:
+                #-- print(f"\n{pheno_no=} does not match {last_pheno_no=}")
                 logger.debug("phenotype %d is accepted", pheno_no)
                 last_pheno_no = pheno_no
                 accepted_headers.append(header)
                 i_min = i; j_min = j
+            ## if i or j is smaller than i_min or j_min, replace the former accepted header
+            elif i <= i_min and j <= j_min:
+                #-- print(f"\n{i=}, {i_min=}, {j=}, {j_min=}")
+                logger.warning("\nheader %s is accepted, former accepted header %s should be deprecated.", header, accepted_headers.pop())
+                i_min = i; j_min = j
+                accepted_headers.append(header)
             else:
-                if i <= i_min and j <= j_min:
-                    logger.warning("\nheader %s is accepted, former accepted header should be deprecated.", header)
-                    i_min = i; j_min = j
-                    accepted_headers.pop()
-                    accepted_headers.append(header)
-                else:
-                    logger.debug("column %s is not accepted", header)
-                pass
+                logger.debug("column %s is not accepted", header)
 
-            '''i_min = np.inf; j_min = np.inf
-            for i in range(10):
-                for j in range(10):
-                    if re.match(rf'^f\.\d+\.{i}.{j}', header):
-                        if i < i_min and j < j_min: # (i,j) is the smallest pair. Add it to accepted_headers
-                            i_min = i; j_min = j
-                            accepted_headers.append(header)
-                        
-                        logger.debug("f.%d.%d.%d is accepted", i, j)
-                        accepted_headers.append(header)
-                        break
-                    else:
-                        logger.debug("f.%d.%d.%d is not accepted", i, j)
-                if re.match(rf'^f\.\d+\.{i}.{j}', header):
-                    logger.debug("f.%d.%d.%d is accepted", i, j)
-                    break'''
         elif re.match(r'^f\.eid.*', header):
             logger.debug("%s is the header of IID column", header)
             iid_header = header
@@ -203,55 +233,41 @@ def extract_phenotype_info(
 
     # load phenotype data and save them
     ## 改成多进程
-    ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
-    def work_thread(
-        header: str, pattern: str, 
-        generated_files_queue: Queue, 
-        iid_header: str = iid_header, 
-        input_name: str = input_name,
-        pheno_info_path: str = pheno_info_path
-    ):
-        pheno_df = pd.read_csv(
-            pheno_info_path, 
-            usecols=[iid_header, header], sep=r"\s+",
-            dtype=pd.StringDtype()
-        )
-        ### 数据清洗 Replace NA and other strings with -9
-        #### replace NA with "-9"
-        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
-        #### replace all unrecognised strings with "-9"
-        for i in range(len(pheno_df)):
-            if not re.match(pattern, pheno_df.iloc[i, 1]):
-                pheno_df.iloc[i, 1] = "-9"
-                logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
-            else:
-                logger.debug("%s is a valid phenotype number", pheno_df.iloc[i, 1])
 
-        ### merge phenotype data with .fam in order to complement FID
-        pheno_tosave = pd.merge(
-            fam_df, pheno_df, 
-            how="inner", left_on="IID", right_on=iid_header
-        ).loc[:, ["FID", "IID", header]]
-        pheno_tosave.to_csv(
-            f"{input_name}_{header}.txt",
-            sep="\t", index=False
-        )
-        generated_files_queue.put(f"{input_name}_{header}.txt")
 
-    generated_files_queue = Queue()
+    generated_files_queue = Manager().Queue()
     pattern = r"^-*\d+\.?\d*$"
     with ProcessPoolExecutor() as pool:
         count = 0
-        print("\nall headers: %s \naccepted headers: %s", headers, accepted_headers)
+        print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
+        futures: list[FutureClass] = []
         for header in accepted_headers:
             progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
-            pool.submit(
-                work_thread,
+            future = pool.submit(
+                _work_thread,
                     header, pattern,
-                    generated_files_queue
+                    generated_files_queue,
+                    fam_df,
+                    iid_header, input_name, pheno_info_path
             )
+            if future is None:
+                logger.error("future is None!")
+            else:
+                logger.debug("future is not None!")
+                futures.append(future)
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                #-- print(f"Task completed with result: {result}")
+            except Exception as e:
+                logging.warning(f"Caught an exception from a worker thread: {e}")
+            
+    '''for header in accepted_headers:
+        progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+        _work_thread(header, pattern, generated_files_queue, fam_df, iid_header, input_name, pheno_info_path)'''
         # get all generated file paths from the queue
-        generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
+        
+    generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
 
     return generated_files
     

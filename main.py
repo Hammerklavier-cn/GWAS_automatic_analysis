@@ -244,8 +244,11 @@ pheno_files = extract_phenotype_info(
     fm.output_name_temp_root + "_standardised",
     fm.phenotype_file_path
 )
+print("")
+sys.exit()
 print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
+print("Phenotype files:", pheno_files)
 for pheno_file in pheno_files:
     for output in outputs:
         progress_bar.print_progress(
