@@ -2,17 +2,20 @@ import os, sys, subprocess, logging
 
 from pandas import StringDtype
 from Classes import FileManagement
-from myutil.small_tools import ProgressBar
+from myutil.small_tools import ProgressBar, create_logger
 from deprecated.sphinx import deprecated
 
 import json
 import os
 import re
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Queue
 
 import numpy as np
 import pandas as pd
 
+logger = create_logger("complementLogger", level=logging.DEBUG)
 
 # 分割表格，并且只提取了所有表型第一次采样的数据
 @deprecated(reason="Deprecated for it doesn't meet project's requirements", version="1.0")
@@ -96,7 +99,7 @@ def phenotype_complement(
 def extract_phenotype_info(
     input_name: str,
     pheno_info_path: str
-) -> dict[str, str]:
+) -> list[str]:
     """
     Extract phenotype information from a file, 
     generate csvs, containing [FID, IID, phenotype_value].
@@ -111,9 +114,9 @@ def extract_phenotype_info(
         pheno_info_path (str):
             path to phenotype information file.
     Returns:
-        dict (dict[str, str]) : 
-            dict of [phenotype_name, generated_csv_path]
-    Generate Files:
+        List (list[str]): 
+            list of [generated split phenotype info file path]
+    ## Generate Files:
         %(input_name)s_%(f.*.*).txt"""
         
     generated_files: dict[str, str] = {}
@@ -122,41 +125,74 @@ def extract_phenotype_info(
 
     # get header
     '''if not pheno_info_path.endswith('.csv'):
-        logging.error("Input file should be a csv file.")
+        logger.error("Input file should be a csv file.")
         sys.exit(1)'''
     headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
-    logging.debug("headers: %s", headers)
+    logger.debug("headers: %s", headers)
     accepted_headers: list[str] = []
     count = 0
     iid_header = None
+    
+    pheno_no = 0
+    last_pheno_no: int = 0
+    i_min = np.inf; j_min = np.inf
+    
     for header in headers:
         # show progress bar
         count += 1
         progress_bar.print_progress(f"processing {header}", len(headers), count)
-        
+
+        i_min = np.inf; j_min = np.inf
+
         if re.match(r'^f\.\d+\.\d+\.\d+$', header):
-            logging.debug("%s is a valid phenotype name", header)
+            logger.debug("%s is a valid phenotype name", header)
+            # get version by python regex
+            pattern = r"^f\.(?P<first>\d+)\.(?P<second>\d)\.(?P<third>\d+)$"
+            match = re.match(pattern, header)
+            pheno_no = int(match.group('first'))
+            i = int(match.group('second'))
+            j = int(match.group('third'))
+
+            if pheno_no != last_pheno_no:
+                logger.debug("phenotype %d is accepted", pheno_no)
+                last_pheno_no = pheno_no
+                accepted_headers.append(header)
+                i_min = i; j_min = j
+            else:
+                if i <= i_min and j <= j_min:
+                    logger.warning("\nheader %s is accepted, former accepted header should be deprecated.", header)
+                    i_min = i; j_min = j
+                    accepted_headers.pop()
+                    accepted_headers.append(header)
+                else:
+                    logger.debug("column %s is not accepted", header)
+                pass
+
+            '''i_min = np.inf; j_min = np.inf
             for i in range(10):
                 for j in range(10):
                     if re.match(rf'^f\.\d+\.{i}.{j}', header):
-                        i_min = i; j_min = j
-                        logging.debug("f.%d.%d.%d is accepted", i, j)
+                        if i < i_min and j < j_min: # (i,j) is the smallest pair. Add it to accepted_headers
+                            i_min = i; j_min = j
+                            accepted_headers.append(header)
+                        
+                        logger.debug("f.%d.%d.%d is accepted", i, j)
                         accepted_headers.append(header)
                         break
                     else:
-                        logging.debug("f.%d.%d.%d is not accepted", i, j)
+                        logger.debug("f.%d.%d.%d is not accepted", i, j)
                 if re.match(rf'^f\.\d+\.{i}.{j}', header):
-                    logging.debug("f.%d.%d.%d is accepted", i, j)
-                    break
+                    logger.debug("f.%d.%d.%d is accepted", i, j)
+                    break'''
         elif re.match(r'^f\.eid.*', header):
-            logging.debug("%s is the header of IID column", header)
+            logger.debug("%s is the header of IID column", header)
             iid_header = header
         else:
-            logging.debug("%s is not a valid phenotype name", header)
+            logger.debug("%s is not a valid phenotype name", header)
     if not iid_header:
-        logging.error("No IID column found")
+        logger.error("No IID column found")
         sys.exit(4)
-    logging.info("Accepted phenotype names: %r", accepted_headers)
+    logger.info("Accepted phenotype names: %r", accepted_headers)
 
     fam_df = pd.read_csv(
         f"{input_name}.fam",
@@ -166,6 +202,60 @@ def extract_phenotype_info(
     fam_df.columns = pd.Index(["FID", "IID"])
 
     # load phenotype data and save them
+    ## 改成多进程
+    ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
+    def work_thread(
+        header: str, pattern: str, 
+        generated_files_queue: Queue, 
+        iid_header: str = iid_header, 
+        input_name: str = input_name,
+        pheno_info_path: str = pheno_info_path
+    ):
+        pheno_df = pd.read_csv(
+            pheno_info_path, 
+            usecols=[iid_header, header], sep=r"\s+",
+            dtype=pd.StringDtype()
+        )
+        ### 数据清洗 Replace NA and other strings with -9
+        #### replace NA with "-9"
+        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
+        #### replace all unrecognised strings with "-9"
+        for i in range(len(pheno_df)):
+            if not re.match(pattern, pheno_df.iloc[i, 1]):
+                pheno_df.iloc[i, 1] = "-9"
+                logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
+            else:
+                logger.debug("%s is a valid phenotype number", pheno_df.iloc[i, 1])
+
+        ### merge phenotype data with .fam in order to complement FID
+        pheno_tosave = pd.merge(
+            fam_df, pheno_df, 
+            how="inner", left_on="IID", right_on=iid_header
+        ).loc[:, ["FID", "IID", header]]
+        pheno_tosave.to_csv(
+            f"{input_name}_{header}.txt",
+            sep="\t", index=False
+        )
+        generated_files_queue.put(f"{input_name}_{header}.txt")
+
+    generated_files_queue = Queue()
+    pattern = r"^-*\d+\.?\d*$"
+    with ProcessPoolExecutor() as pool:
+        count = 0
+        print("\nall headers: %s \naccepted headers: %s", headers, accepted_headers)
+        for header in accepted_headers:
+            progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+            pool.submit(
+                work_thread,
+                    header, pattern,
+                    generated_files_queue
+            )
+        # get all generated file paths from the queue
+        generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
+
+    return generated_files
+    
+    # The following should be deprecated and adapted.
     count = 0; print()
     for header in accepted_headers:
         count += 1
@@ -176,20 +266,17 @@ def extract_phenotype_info(
             dtype=pd.StringDtype()
         )
         # replace NA and other strings with -9
-        pattern = r"^-*\d+\.?\d*$"
+        '''pattern = r"^-*\d+\.?\d*$"
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         for i in range(len(pheno_df)):
             if pheno_df.iloc[i, 1] == np.nan:
                 pheno_df.iloc[i, 1] = "-9"
-                logging.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
+                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
             elif re.match(pattern, pheno_df.iloc[i, 1]):
-                logging.debug("%s is a valid phenotype number")
+                logger.debug("%s is a valid phenotype number")
             elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
                 pheno_df.iloc[i, 1] = "-9"
-                logging.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
-            '''else:
-                pheno_df.iloc[i, 1] = "-9"
-                logging.debug("%s is replaced with -9, for it is not a valid number, may be a string.", pheno_df.iloc[i, 1])'''
+                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])'''
 
         # merge phenotype data with .fam in order to complement FID.
         pheno_tosave = pd.merge(

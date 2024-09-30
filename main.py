@@ -4,6 +4,12 @@
     This is an automatic single and multiple SNP -- phenotype association analysis script.
 """
 
+print("""
+Automatic single and multiple SNP -- phenotype association analysis python script.
+    Author: Hammerklavier-cn, akka2318, Ciztro.
+    Version: 0.1rc2
+""")
+
 # import neccesary libraries
 ## standard libraries
 import subprocess
@@ -240,7 +246,6 @@ pheno_files = extract_phenotype_info(
 )
 print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
-pheno_files = list(pheno_files.values())
 for pheno_file in pheno_files:
     for output in outputs:
         progress_bar.print_progress(
