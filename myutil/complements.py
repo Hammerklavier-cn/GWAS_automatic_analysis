@@ -117,13 +117,20 @@ def _work_thread(
         )
         ### 数据清洗 Replace NA and other strings with -9
         #### replace NA with "-9"
-        print("数据清洗ing...")
-        pheno_df.loc[:, iid_header] = pheno_df.loc[:, iid_header].fillna("-9")
+        print("Data cleansing...")
+        #-- pheno_df.loc[:, iid_header] = pheno_df.loc[:, iid_header].fillna("-9")
+        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
+        print(pheno_df)
         #### replace all unrecognised strings with "-9"
+        print(f"{len(pheno_df)} rows in total")
         for i in range(len(pheno_df)):
+            if not (i % 100000):
+                print(f"{i} rows processed.")
             if type(pheno_df.iloc[i, 1]) != str:
+                print(f"{pheno_df.iloc[i, 1]} is not a string, replaced with -9")
                 pheno_df.iloc[i, 1] = "-9"
-            elif not re.match(pattern, str(pheno_df.iloc[i, 1])): 
+            elif not re.match(pattern, str(pheno_df.iloc[i, 1])):
+                print(f"{pheno_df.iloc[i, 1]} is not a valid phenotype number, replaced with -9")
                 pheno_df.iloc[i, 1] = "-9"
                 logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
             else:
