@@ -94,7 +94,7 @@ def phenotype_complement(
             f.write(content.replace('-9.0', '-9'))
         os.remove(file_path)
         os.rename(file_path + 'temp', file_path)
-        progress_bar(count, total_count // 10 + 1)
+        progress_bar(count, total_count // 10 + 1) # type: ignore
         count += 1
 
 ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
@@ -119,7 +119,7 @@ def _work_thread(
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         #### replace all unrecognised strings with "-9"
         for i in range(len(pheno_df)):
-            if not re.match(pattern, pheno_df.iloc[i, 1]):
+            if not re.match(pattern, pheno_df.iloc[i, 1]): # type: ignore
                 pheno_df.iloc[i, 1] = "-9"
                 logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
             else:
@@ -135,7 +135,7 @@ def _work_thread(
             sep="\t", index=False
         )
         #-- print(f"\ngenerate pheno file {f'{input_name}_{header}.txt'}")
-        generated_files_queue.put(f"{input_name}_{header}.txt")
+        generated_files_queue.put(f"{input_name}_{header}.txt", timeout=1)
 
     except Exception as e:
         print("\nError: %s", e)
@@ -163,7 +163,7 @@ def extract_phenotype_info(
     ## Generate Files:
         %(input_name)s_%(f.*.*).txt"""
         
-    generated_files: dict[str, str] = {}
+    generated_files: list[str] = []
     
     progress_bar = ProgressBar()
 
@@ -193,11 +193,10 @@ def extract_phenotype_info(
             # get version by python regex
             pattern = r"^f\.(?P<first>\d+)\.(?P<second>\d)\.(?P<third>\d+)$"
             match = re.match(pattern, header)
-            pheno_no = int(match.group('first'))
-            i = int(match.group('second'))
-            j = int(match.group('third'))
+            pheno_no = int(match.group('first')) # type: ignore
+            i = int(match.group('second')) # type: ignore
+            j = int(match.group('third')) # type: ignore
             #-- print(f"++--++{pheno_no=}, {i=}, {j=}, {last_pheno_no=}, {i_min=}, {j_min=}")
-
             ## if not save pheno, reset i_min and j_min and last_pheno_no
             if pheno_no != last_pheno_no:
                 #-- print(f"\n{pheno_no=} does not match {last_pheno_no=}")
@@ -234,15 +233,17 @@ def extract_phenotype_info(
     # load phenotype data and save them
     ## 改成多进程
 
-
-    generated_files_queue = Manager().Queue()
+    generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor() as pool:
+    with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool:
         count = 0
         print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []
         for header in accepted_headers:
-            progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+            # progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+            pool.submit(
+                progress_bar.print_progress, f"processing {header}", len(accepted_headers), count := count + 1
+            )
             future = pool.submit(
                 _work_thread,
                     header, pattern,
@@ -282,7 +283,7 @@ def extract_phenotype_info(
             dtype=pd.StringDtype()
         )
         # replace NA and other strings with -9
-        '''pattern = r"^-*\d+\.?\d*$"
+        pattern = r"^-*\d+\.?\d*$" 
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         for i in range(len(pheno_df)):
             if pheno_df.iloc[i, 1] == np.nan:
@@ -292,7 +293,7 @@ def extract_phenotype_info(
                 logger.debug("%s is a valid phenotype number")
             elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
                 pheno_df.iloc[i, 1] = "-9"
-                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])'''
+                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
 
         # merge phenotype data with .fam in order to complement FID.
         pheno_tosave = pd.merge(
@@ -331,4 +332,4 @@ def gender_complement(
     str: _complemented plink file name_
     """
     # Note: This function is merged in `devide pop by gender``
-    return ["complemented_file_name"]  # placeholder
+    return "complemented_file_name"  # placeholder

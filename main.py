@@ -84,7 +84,7 @@ with ProcessPoolExecutor() as pool:
         progress_bar.print_progress(
             f"Divide {os.path.relpath(output[1])} into ethnic groups...",
             len(outputs),
-            outputs.index(output) + 1
+            outputs.index(output) + 1 # type: ignore
         )
         futures.append(
             pool.submit(
@@ -114,7 +114,7 @@ with ProcessPoolExecutor() as pool:
         progress_bar.print_progress(
             f"Visualising missingness for {os.path.relpath(output[1])}...",
             len(outputs),
-            outputs.index(output) + 1
+            outputs.index(output) + 1 # type: ignore
         )
         futures.append(
             pool.submit(
@@ -137,7 +137,7 @@ with ProcessPoolExecutor() as pool:
         progress_bar.print_progress(
             f"Filtering high missingness for {os.path.relpath(output[1])}...",
             len(outputs),
-            outputs.index(output) + 1
+            outputs.index(output) + 1 # type: ignore
         )
         futures.append(
             pool.submit(
