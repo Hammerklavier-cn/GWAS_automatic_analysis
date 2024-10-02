@@ -106,10 +106,11 @@ def _work_thread(
     input_name: str,
     pheno_info_path: str
 ):
+    save_path = os.path.join(os.path.dirname(input_name), os.path.splitext(os.path.basename(input_name))[0])
     try:
         logger = create_logger("complementLogger", level=logging.DEBUG)
-        print(f"\nLaunched process for {header}.")
-        print(f"Reading phenotype info from {pheno_info_path}.")
+        #-- print(f"\nLaunched process for {header}.")
+        #-- print(f"Reading phenotype info from {pheno_info_path}.")
         pheno_df = pd.read_csv(
             pheno_info_path, 
             usecols=[iid_header, header], sep=r"\s+",
@@ -117,43 +118,49 @@ def _work_thread(
         )
         ### 数据清洗 Replace NA and other strings with -9
         #### replace NA with "-9"
-        print("Data cleansing...")
+        #--- print("Data cleansing...")
         #-- pheno_df.loc[:, iid_header] = pheno_df.loc[:, iid_header].fillna("-9")
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
-        print(pheno_df)
+        #-- print(pheno_df)
         #### replace all unrecognised strings with "-9"
-        print(f"{len(pheno_df)} rows in total")
+        #-- print(f"{len(pheno_df)} rows in total")
+        ### Examine Failure Rate. If too high, maybe it is not a phenotype column at all.
+        failure_count = 0
         for i in range(len(pheno_df)):
-            if not (i % 100000):
-                print(f"{i} rows processed.")
+            '''if not (i % 100000):
+                print(f"{i} rows processed.")'''
             if type(pheno_df.iloc[i, 1]) != str:
-                print(f"{pheno_df.iloc[i, 1]} is not a string, replaced with -9")
+                #-- print(f"{pheno_df.iloc[i, 1]} is not a string, replaced with -9")
                 pheno_df.iloc[i, 1] = "-9"
             elif not re.match(pattern, str(pheno_df.iloc[i, 1])):
-                print(f"{pheno_df.iloc[i, 1]} is not a valid phenotype number, replaced with -9")
+                failure_count += 1
+                #-- print(f"{pheno_df.iloc[i, 1]} is not a valid phenotype number, replaced with -9")
                 pheno_df.iloc[i, 1] = "-9"
                 logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
             else:
                 logger.debug("%s is a valid phenotype number", pheno_df.iloc[i, 1])
+            if failure_count / len(pheno_df) > 0.1:
+                logger.warning("Failure rate is too high. Maybe %s is not a phenotype column at all.", header)
+                return
 
         ### merge phenotype data with .fam in order to complement FID
-        print("merging phenotype data with .fam...")
+        #-- print("merging phenotype data with .fam...")
         pheno_tosave = pd.merge(
             fam_df, pheno_df, 
             how="inner", left_on="IID", right_on=iid_header
         ).loc[:, ["FID", "IID", header]]
-        print(f"save to file {f'{input_name}_{header}.txt'}")
+        #-- print(f"save to file {f'{input_name}_{header}.txt'}")
         pheno_tosave.to_csv(
             f"{input_name}_{header}.txt",
             sep="\t", index=False
         )
         #-- print(f"\ngenerate pheno file {f'{input_name}_{header}.txt'}")
-        print("putting ressult into queue...")
+        #-- print("putting ressult into queue...")
         generated_files_queue.put(f"{input_name}_{header}.txt", timeout=1)
-        print(f"Done for {header}")
+        #-- print(f"Done for {header}")
 
     except Exception as e:
-        print("\nError: %s", e)
+        logger.error("\nError: %s", e)
 
 def extract_phenotype_info(
     input_name: str,
@@ -250,7 +257,7 @@ def extract_phenotype_info(
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor(max_workers=1) as pool:
+    with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool:
         count = 0
         print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []
