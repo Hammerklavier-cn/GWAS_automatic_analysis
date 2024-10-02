@@ -139,7 +139,7 @@ def _work_thread(
                 logger.debug("%s is replaced with -9, for it is does not match pattern %s.", pheno_df.iloc[i, 1], pattern)
             else:
                 logger.debug("%s is a valid phenotype number", pheno_df.iloc[i, 1])
-            if failure_count / len(pheno_df) > 0.1:
+            if failure_count / len(pheno_df) > 0.01:
                 logger.warning("Failure rate is too high. Maybe %s is not a phenotype column at all.", header)
                 return
 
@@ -257,7 +257,7 @@ def extract_phenotype_info(
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool:
+    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/2)) as pool: # type: ignore
         count = 0
         print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []
