@@ -1,14 +1,16 @@
-import os, sys, logging, subprocess
+import os, sys, subprocess, logging
 from typing import Literal
 import matplotlib.pyplot as plt
 import matplotlib
 import pandas as pd
 import numpy as np
+import seaborn as sns
 
 from Classes import FileManagement
+from myutil import small_tools
 
-matplotlib.use('Agg')
-
+# matplotlib.use('Agg')
+logger = small_tools.create_logger("MainLogger", level=logging.INFO)
 
 def missing(
     fm: FileManagement,
@@ -40,8 +42,7 @@ def missing(
     
     **${save_path_name}_lmiss_visualisation.png**: _Visualisation of missingness of SNPs._
     """
-    logging.basicConfig(level=logging.ERROR, format="%(asctime)s -- %(levelname)s -- %(message)s")
-    logging.info("Calculating proportions of missing data of %s %s data set", ethnic, gender)
+    logger.info("Calculating proportions of missing data of %s %s data set", ethnic, gender)
     try:
         command = [
             fm.plink, 
@@ -56,14 +57,14 @@ def missing(
             check=True
         )
     except subprocess.CalledProcessError as e:
-        logging.error(f"Error calculating proportions of missing data plink: {e}")
+        logger.error(f"Error calculating proportions of missing data plink: {e}")
         sys.exit(2)
-    logging.info("Finished Calculation")
+    logger.info("Finished Calculation")
     
-    logging.info("Visualising missing data")
+    logger.info("Visualising missing data")
     
     # Visualise missingness of individuals.
-    logging.info("Visualising missingness of individuals")
+    logger.info("Visualising missingness of individuals")
     imiss_df = pd.read_csv(f"{input_name}.imiss", sep=r"\s+", usecols=["F_MISS"])
 
     plt.hist(imiss_df, density=True, bins=20)  
@@ -109,7 +110,7 @@ def hardy_weinberg(
         **${save_path_name}.png**: _Visualisation of p-value of HWE._
     """
     # Calculate HWE.
-    logging.info("Calculating p-value of HWE")
+    logger.info("Calculating p-value of HWE")
     try:
         command = [
             fm.plink,
@@ -124,9 +125,9 @@ def hardy_weinberg(
             check=True
         )
     except subprocess.CalledProcessError as e:
-        logging.error(f"Error running plink: {e}")
+        logger.error(f"Error running plink: {e}")
         sys.exit(2)
-    logging.info("Finished Calculation")
+    logger.info("Finished Calculation")
         
     
     # Draw histogram.
@@ -141,7 +142,7 @@ def hardy_weinberg(
     plt.clf()
     '''
     # Zoomed version. Focusing on the severe deviating SNPs.
-    zoomed = pd.read_csv(f"{input_name}_zoomhwe.csv", sep=r"\s+", engine="c", header=None, usecols=[8])
+    zoomed = pd.read_csv(f"{input_name}_zoomhwe.csv", sep="\\s+", engine="c", header=None, usecols=[8])
     plt.hist(zoomed, bins=20)
     plt.xlabel("p value")
     plt.ylabel("Frequency / Intercept")
@@ -180,9 +181,9 @@ def minor_allele_frequency(
             check=True
         )
     except subprocess.CalledProcessError as e:
-        logging.error(f"Error running plink: {e}")
+        logger.error(f"Error running plink: {e}")
         sys.exit(2)
-    logging.info("Finished Calculation")
+    logger.info("Finished Calculation")
 
     freq_file = pd.read_csv(
         f"{input_name}.frq", sep=r"\s+", engine="c",usecols=["MAF"]
@@ -197,14 +198,14 @@ def minor_allele_frequency(
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
 def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
-    print("开始关联性分析可视化")
+    logger.info("开始关联性分析可视化")
 
     if not os.path.exists(file_path):
-        logging.warning(f"{file_path} does not exist!")
+        logger.warning(f"{file_path} does not exist!")
         return
     file_name = os.path.basename(file_path)
     
-    print("读取文件")
+    logger.debug("读取文件")
     # calculate threshold
     a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
     a_m["ID"] = list(range(a_m.shape[0]))
@@ -217,11 +218,14 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     t_pd = a_m.loc[a_m["P"] < threshold, :]
     # print(t_pd)
 
+    sns.set_theme("paper", style="whitegrid")
     ## 曼哈顿图 (Manhattan Plot)
-    print("开始绘制曼哈顿图")
-    plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
-    plt.figure(figsize=[10, 5], dpi=300)
+    logger.debug("开始绘制曼哈顿图")
+    #- plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
+    plt.figure(figsize=(10, 5), dpi=300)
     plt.scatter(x, y, s=2, c=y, cmap='viridis', marker="o")
+    ### 添加水平线
+    plt.axhline(y=-np.log10(threshold), color='red', linestyle='--')
 
     # 添加标注
     for _, row_ in t_pd.iterrows():
@@ -238,9 +242,10 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     plt.close()
 
     ## QQ图 (QQ-Plot)
-    print("开始绘制QQ图")
-    plt.figure(figsize=[5, 5], dpi=300)
-    plt.style.use('dark_background')  # 设置类似 Seaborn 的黑色背景样式
+    logger.debug("开始绘制QQ图")
+    sns.set_theme("paper", style="whitegrid")
+    plt.figure(figsize=(5, 5), dpi=300)
+    # plt.style.use('dark_background')  # 设置类似 Seaborn 的黑色背景样式
 
     # 理论 -log10(P) 值
     x = np.linspace(0.5 / a_m.shape[0], 1 - 0.5 / a_m.shape[0], a_m.shape[0])
@@ -258,4 +263,4 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
     plt.tight_layout()
     plt.savefig(f"{output_path}_QQ.png", dpi=600)
     plt.close()
-    print(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
+    logger.debug(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
