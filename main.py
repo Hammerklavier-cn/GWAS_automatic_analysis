@@ -90,13 +90,17 @@ with ProcessPoolExecutor() as pool:
                     fm,
                     output[1],
                     fm.ethnic_info_file_path,
-                    fm.ethnic_reference_path
+                    fm.ethnic_reference_path,
+                    output[0]
             )
         )
     # This output contains [ethnic_name, output_file_path]
     for future in futures:
-        outputs.extend(future.result())
+        print(future.result())
+        output_cache.extend(future.result())
     #print("outputs:", outputs)
+outputs = output_cache
+output_cache = []
 logger.info("Division finished.")
 print()
 
@@ -106,8 +110,8 @@ print()
 print("Visualising missingness...")
 logger.info("Visualising missingness...")
 os.makedirs("missingness_visualisations", exist_ok=True)
-
-with ProcessPoolExecutor() as pool:
+print(outputs)
+with ProcessPoolExecutor() as pool:     # Warning: API has changed!
     futures: list[FutureClass] = []
     for output in outputs:
         progress_bar.print_progress(
@@ -119,12 +123,13 @@ with ProcessPoolExecutor() as pool:
             pool.submit(
                 vislz.minor_allele_frequency,
                 fm,
-                output[1],
-                os.path.join(os.path.dirname(output[1]), "../", "missingness_visualisation",os.path.basename(output[1]))
+                output[2], ## warning: API has changed!!
+                os.path.join(os.path.dirname(output[2]), "../", "missingness_visualisations",os.path.basename(output[2])),
+                gender=output[0], ethnic=output[1]
             )
         )
 print()
-
+sys.exit()
 logging.info("Visualising missingness finished.")
 ### Filtering
 print("Filtering high missingness...")
@@ -132,7 +137,7 @@ print("Filtering high missingness...")
 with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     output_cache = []
-    for output in outputs:
+    for output in outputs:          # Warning: API has changed!
         progress_bar.print_progress(
             f"Filtering high missingness for {os.path.relpath(output[1])}...",
             len(outputs),

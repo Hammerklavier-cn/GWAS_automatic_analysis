@@ -259,7 +259,7 @@ def extract_phenotype_info(
     pattern = r"^-*\d+\.?\d*$"
     with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/2)) as pool: # type: ignore
         count = 0
-        print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
+        #-- print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []
         for header in accepted_headers:
             # progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)

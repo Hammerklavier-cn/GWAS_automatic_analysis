@@ -6,13 +6,18 @@ from threading import Thread
 import logging, os, sys
 from multiprocessing import Process
 from Classes import FileManagement
+from typing import Optional
 
+from myutil.small_tools import create_logger
+
+logger = create_logger("GroupDivisionLogger", level=logging.INFO)
 def divide_pop_by_ethnic(
         fm: FileManagement,
         input_name: str, 
         ethnic_info_path: str, 
-        reference_path: str = "./myutil/ethnic_serial_reference.tsv"
-    ) -> list[list[str]]:
+        reference_path: str = "./myutil/ethnic_serial_reference.tsv",
+        original_gender: str | None = None
+    ) -> list[tuple[Optional[str], str, str]]:
     """
     Divide population by ethnicity.
     
@@ -26,10 +31,9 @@ def divide_pop_by_ethnic(
     
     Returns
     -------
-    list[list[str, str]]
-        [`ethnic_name`, `file_path`].
+    list[list[str | None, str, str]]
+        [`gender`, `ethnic_name`, `file_path`].
     """
-    logging.basicConfig(level=logging.ERROR, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
         eth_ref = pd.read_csv(reference_path, sep="\t", dtype=pd.StringDtype())
@@ -38,10 +42,10 @@ def divide_pop_by_ethnic(
         elif ethnic_info_path.endswith(".xlsx") or ethnic_info_path.endswith(".xls"):
             eth_info = pd.read_excel(ethnic_info_path, dtype=pd.StringDtype())
         else:
-            logging.error("Unsupported file format: %s", os.path.splitext(ethnic_info_path)[-1])
+            logger.error("Unsupported file format: %s", os.path.splitext(ethnic_info_path)[-1])
             sys.exit(1)
     except Exception as e:
-        logging.error("An error occurred while reading %s: %s", ethnic_info_path, e)
+        logger.error("An error occurred while reading %s: %s", ethnic_info_path, e)
         sys.exit(3)
 
     # Merge individuals' ethnic information with ethnics reference.
@@ -53,7 +57,7 @@ def divide_pop_by_ethnic(
             eth_col_name = col_name
             break
     else:
-        logging.error(f"No {pattern} column found in %s", ethnic_info_path)
+        logger.error(f"No {pattern} column found in %s", ethnic_info_path)
         sys.exit(4)
     eth_info.rename(columns={eth_col_name: "ethnic_coding"}, inplace=True)
     ## rename ID to IID
@@ -63,7 +67,7 @@ def divide_pop_by_ethnic(
             id_col_name = col_name
             break
     else:
-        logging.error(f"No {pattern} column found in %s", ethnic_info_path)
+        logger.error(f"No {pattern} column found in %s", ethnic_info_path)
         sys.exit(4)
     eth_info.rename(columns={id_col_name: "IID"}, inplace=True)
     ## Also rename the coding column from the reference file.
@@ -73,7 +77,7 @@ def divide_pop_by_ethnic(
             eth_col_name = col_name
             break
     else:
-        logging.error(f"No {pattern} column found in %s", reference_path)
+        logger.error(f"No {pattern} column found in %s", reference_path)
         sys.exit(4)
     eth_ref.rename(columns={eth_col_name: "ethnic_coding_ref"}, inplace=True)
     ## Also, rename "ethnic code meaning" to "meaning"
@@ -83,22 +87,22 @@ def divide_pop_by_ethnic(
             eth_col_name = col_name
             break
     else:
-        logging.error(f"No {pattern} column found in %s", reference_path)
+        logger.error(f"No {pattern} column found in %s", reference_path)
         sys.exit(4)
     eth_ref.rename(columns={eth_col_name: "meaning"}, inplace=True)
 
     ## Join two dataframes by 'ethnic' colomn.
-    logging.info("Joining %s.fam with ethnic information...", input_name)
+    logger.info("Joining %s.fam with ethnic information...", input_name)
     merged_eth = pd.merge(eth_info, eth_ref, how="inner", left_on="ethnic_coding", right_on="ethnic_coding_ref")
     ## Divide population by ethnicity.
-    group_list: list[list[str]] = []
+    group_list: list[tuple[Optional[str], str, str]] = []
     ### Divide population into small ethnic groups and save list of individuals in each group.
     ethnic_names = set(eth_ref["meaning"])
     fam = pd.read_csv(f"{input_name}.fam", sep=r"\s+", header=None, usecols=[0, 1], engine="c", dtype=pd.StringDtype()) 
     fam.columns = pd.Index(["FID", "IID"])
     merged_fam = pd.merge(fam, merged_eth, how="inner", left_on="IID", right_on="IID", suffixes=(None,"_right"))
     for ethnic_name in ethnic_names:    # specify certain ethnic group:
-        logging.info(f"Dividing population by ethnicity: {ethnic_name}...")
+        logger.info(f"Dividing population by ethnicity: {ethnic_name}...")
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
         merged_fam[merged_fam["meaning"] == ethnic_name].loc[:,["FID", "IID"]].to_csv(
             f"{input_name}_{ethnic_name}.csv", sep="\t", index=False, header=True
@@ -120,9 +124,9 @@ def divide_pop_by_ethnic(
             check=True,
         )
         
-        logging.info("Successfully divided population by ethnicity: %s", ethnic_name)
+        logger.info("Successfully divided population by ethnicity: %s", ethnic_name)
         
-        group_list.append([ethnic_name, f"{input_name}_{ethnic_name}"])
+        group_list.append((original_gender, ethnic_name, f"{input_name}_{ethnic_name}")) # type: ignore
 
     ### Divide population into large ethnic groups.
     
@@ -155,25 +159,24 @@ def divide_pop_by_gender(
     """
 
      # generate a .csv file, containing [FID, IID, Sex] columns.
-    logging.basicConfig(level=logging.WARNING, format="%(asctime)s -- %(levelname)s -- %(message)s")
     # read files
     try:
-        logging.info("Reading gender reference file...")
+        logger.info("Reading gender reference file...")
         gender_ref_df = pd.read_csv(gender_reference_path, sep="\t", dtype=pd.StringDtype())
 
-        logging.info("Reading gender info file...")
+        logger.info("Reading gender info file...")
         if gender_info_path.endswith(".tsv") or gender_info_path.endswith("csv"):
             gender_info_df = pd.read_csv(gender_info_path, sep=r"\s+")
         elif gender_info_path.endswith(".xlsx") or gender_info_path.endswith(".xls"):
             gender_info_df = pd.read_excel(gender_info_path, usecols=[0,1], dtype=pd.StringDtype())
         else:
-            logging.error("Unsupported file format: %s", os.path.splitext(gender_info_path)[-1])
+            logger.error("Unsupported file format: %s", os.path.splitext(gender_info_path)[-1])
             sys.exit(1)
     except Exception as e:
-        logging.error("An error occurred while reading %s: %s", gender_info_path, e)
+        logger.error("An error occurred while reading %s: %s", gender_info_path, e)
         sys.exit(3)
 
-    logging.info("rename columns...")
+    logger.info("rename columns...")
     pattern = r".*sex.*|.*gender.*"
     ## rename "coding" column in gender_info_df to "original_sex_coding"
     for col_name in gender_info_df.columns:
@@ -231,7 +234,7 @@ def divide_pop_by_gender(
     
     # divide plink file by gender
     output_file_names: list[list[str]] = []
-    logging.info("Filter males...")
+    logger.info("Filter males...")
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
@@ -246,9 +249,9 @@ def divide_pop_by_gender(
         stderr=subprocess.STDOUT,
         check=True,
     )
-    logging.info("Successfully filtered males.")
+    logger.info("Successfully filtered males.")
     output_file_names.append(["male", f"{input_name}_male"])
-    logging.info("Filter females...")
+    logger.info("Filter females...")
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
@@ -263,6 +266,6 @@ def divide_pop_by_gender(
         stderr=subprocess.STDOUT,
         check=True,
     )
-    logging.info("Successfully filtered females.")
+    logger.info("Successfully filtered females.")
     output_file_names.append(["female", f"{input_name}_female"])
     return output_file_names # place holder for mypy check

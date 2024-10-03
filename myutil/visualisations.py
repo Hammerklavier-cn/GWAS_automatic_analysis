@@ -155,8 +155,9 @@ def minor_allele_frequency(
     fm: FileManagement,
     input_name: str,
     save_path_name: str,
+    *,
     ethnic: str | None = None,
-    gender: Literal["Men", "Women"] | None = None
+    gender: Literal["Men", "Women", None] | None = None
 ) -> None:
     """
     Visualise minor allele frequency.
@@ -167,6 +168,7 @@ def minor_allele_frequency(
         **ethnic** (str): _Ethnic group of the data set._
         **gender** (str): _Gender of the data set._
     """
+    print("Launched", input_name, save_path_name, ethnic, gender)
     try:
         command = [
             fm.plink,
