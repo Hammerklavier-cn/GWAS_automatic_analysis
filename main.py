@@ -32,9 +32,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from concurrent.futures._base import Future as FutureClass
 
 ### Note: the logging library should be gradually replaced with self-defined logger
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s -- %(levelname)s -- %(message)s"
-)
+
 logger = small_tools.create_logger("MainLogger", level=logging.INFO)
 
 logger.info(f"{os.getcwd()=}")
@@ -107,6 +105,7 @@ print()
 ### visualisation
 print("Visualising missingness...")
 logger.info("Visualising missingness...")
+os.makedirs("missingness_visualisations", exist_ok=True)
 
 with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
@@ -121,7 +120,7 @@ with ProcessPoolExecutor() as pool:
                 vislz.minor_allele_frequency,
                 fm,
                 output[1],
-                os.path.join(os.path.dirname(output[1]), "../",os.path.basename(output[1])+".png")
+                os.path.join(os.path.dirname(output[1]), "../", "missingness_visualisation",os.path.basename(output[1]))
             )
         )
 print()
@@ -156,6 +155,7 @@ output_cache = []
 
 ## 2. filter HWE
 print("Visualising HWE...")
+os.makedirs("./hwe_visualisation")
 with ProcessPoolExecutor() as pool:
     for output in outputs:
         progress_bar.print_progress(
@@ -167,7 +167,7 @@ with ProcessPoolExecutor() as pool:
             vislz.hardy_weinberg,
             fm,
             output,
-            os.path.join(os.path.dirname(output), "../",os.path.basename(output))
+            os.path.join(os.path.dirname(output), "../", "hwe_visualisation", os.path.basename(output)+"hwe")
         )
 print("\nFiltering HWE...")
 with ProcessPoolExecutor() as pool:
@@ -195,6 +195,7 @@ print()
 ## 3. filter MAF
 ### visualisation
 print("Visualising MAF...")
+os.makedirs("./maf_visualisation")
 with ProcessPoolExecutor() as pool:
     for output in outputs:
         progress_bar.print_progress(
@@ -206,7 +207,7 @@ with ProcessPoolExecutor() as pool:
             vislz.minor_allele_frequency,
             fm,
             output,
-            os.path.join(os.path.dirname(output), "../",os.path.basename(output))
+            os.path.join(os.path.dirname(output), "../", "maf_visualisation", os.path.basename(output)+"_maf")
         )
 logger.info("MAF visualisation finished.")
 print()
@@ -244,12 +245,49 @@ pheno_files = extract_phenotype_info(
     fm.output_name_temp_root + "_standardised",
     fm.phenotype_file_path
 )
+
 print("")
-sys.exit()
+# sys.exit()
 print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
 print("Phenotype files:", pheno_files)
-for pheno_file in pheno_files:
+
+with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+    for pheno_file in pheno_files:
+        for output in outputs:
+            ## Calculate association
+            pool.submit(
+                progress_bar.print_progress,
+                    f"Calculating association between {pheno_file} and {output}...",
+                    len(outputs) * len(pheno_files),
+                    pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+            )
+            pool.submit(
+                association_analysis.quantitive_association,
+                    fm.plink,
+                    output,
+                    None,
+                    pheno_file,
+                    f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
+            )
+with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+    for pheno_file in pheno_files:
+        for output in outputs:
+            ## Visualise association
+            pool.submit(
+                progress_bar.print_progress,
+                    f"Visualising association between {pheno_file} and {output}...",
+                    len(outputs) * len(pheno_files),
+                    pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+            )
+            pool.submit(
+                vislz.assoc_visualisation,
+                    f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
+                    os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
+            )
+
+
+'''for pheno_file in pheno_files:
     for output in outputs:
         progress_bar.print_progress(
             f"Calculating association for {pheno_file} and {output}...",
@@ -271,4 +309,4 @@ for pheno_file in pheno_files:
         vislz.assoc_visualisation(
             f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
             os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
-        )
+        )'''

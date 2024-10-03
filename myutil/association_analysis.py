@@ -7,7 +7,7 @@ logger = small_tools.create_logger("AssociationLogger")
 def quantitive_association(
     plink_path: str,
     input_name: str,
-    phenotype_name: str,
+    phenotype_name: str|None,
     phenotype_info_path: str,
     output_name: str
 ) -> None:
@@ -23,7 +23,7 @@ def quantitive_association(
             Path to the plink executable file.
         input_name (str): 
             Name of the input file.
-        phenotype_name (str):
+        phenotype_name (str | None):
             Name of the phenotype.
         phenotype_info_path (str):
             Path to the phenotype information file.
