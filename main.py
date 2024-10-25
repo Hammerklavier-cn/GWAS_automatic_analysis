@@ -158,8 +158,8 @@ with ProcessPoolExecutor() as pool:
                     missingness_threshold = 0.02               
             )
         )
-        #output_cache.append(f"{output[1]}_no_miss")
-        output_cache.append((output[0], output[1], f"{output[2]}_no_miss"))
+        #output_cache.append((output[0], output[1], f"{output[2]}_no_miss"))
+    output_cache = [future.result() for future in futures if future.result() is not None]
 print()
 logger.info("Filtering high missingness finished.")
 outputs = output_cache
@@ -284,7 +284,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
                     pheno_file,
                     f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
             )
-with ProcessPoolExecutor(max_workers=int(cpu_count()/cpu_count())) as pool:
+with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
     for pheno_file in pheno_files:
         for output in outputs:
             ## Visualise association

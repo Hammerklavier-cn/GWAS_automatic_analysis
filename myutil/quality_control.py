@@ -9,7 +9,7 @@ def filter_high_missingness(
     gender: Optional[str],
     ethnic: Optional[str],
     missingness_threshold: float = 0.02
-) -> None:
+) -> tuple[Optional[str], Optional[str], str] | None:
     """
     Remove SNPs and individuals with high missingness rate.
     
@@ -18,6 +18,9 @@ def filter_high_missingness(
         **input_path_name** (str): Name of the input file.
         **save_path_name** (str): Path name of the output file.
         **missingness_threshold** (float): Threshold of missingness rate.
+    
+    Returns:
+        tuple[str, str, str]: gender, ethnic, path name of the output file.
     """
     logging.basicConfig(level=logging.WARNING, format="%(asctime)s -- %(levelname)s -- %(message)s")
     try:
@@ -38,13 +41,15 @@ def filter_high_missingness(
         logging.error(
             "An error occurred when running plink: %s", e
         )
-        sys.exit(2)
+        return
     except Exception as e:
         logging.error(
             "Unexpected error occurred: %s", e
         )
-        sys.exit(-3)
+        return
+
     logging.info("Missingness filtering completed.")
+    return gender, ethnic, save_path_name
     
 def filter_maf(
     fm: FileManagement,
