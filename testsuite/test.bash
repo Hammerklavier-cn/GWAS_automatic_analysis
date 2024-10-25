@@ -11,8 +11,11 @@ clear
 
 cd "$(dirname "$0")"    # 文件所在目录
 mkdir -p ../test/
+rm -r ../test/
+mkdir -p ../test/
 cd ../test/                  # 项目主目录
 rm -r *
+
 python3 ../main.py \
     --single \
     --plink-path "${plink_path}" \

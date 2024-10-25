@@ -284,7 +284,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
                     pheno_file,
                     f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
             )
-with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+with ProcessPoolExecutor(max_workers=int(cpu_count()/cpu_count())) as pool:
     for pheno_file in pheno_files:
         for output in outputs:
             ## Visualise association
@@ -297,7 +297,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
             pool.submit(
                 vislz.assoc_visualisation,
                     f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
-                    os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
+                    os.path.join("assoc_pictures", f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc")
             )
 
 
