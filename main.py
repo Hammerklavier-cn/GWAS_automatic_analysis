@@ -111,7 +111,7 @@ print("Visualising missingness...")
 logger.info("Visualising missingness...")
 os.makedirs("missingness_visualisations", exist_ok=True)
 print(outputs)
-with ProcessPoolExecutor() as pool:     # Warning: API has changed!
+with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     for output in outputs:
         progress_bar.print_progress(
@@ -123,23 +123,27 @@ with ProcessPoolExecutor() as pool:     # Warning: API has changed!
             pool.submit(
                 vislz.minor_allele_frequency,
                 fm,
-                output[2], ## warning: API has changed!!
+                output[2],
                 os.path.join(os.path.dirname(output[2]), "../", "missingness_visualisations",os.path.basename(output[2])),
                 gender=output[0], ethnic=output[1]
             )
         )
 print()
-sys.exit()
 logging.info("Visualising missingness finished.")
+
+
 ### Filtering
+"""
+Current format of `outputs` is [[gender, ethnic, file_name],]
+"""
 print("Filtering high missingness...")
 
 with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     output_cache = []
-    for output in outputs:          # Warning: API has changed!
+    for output in outputs:
         progress_bar.print_progress(
-            f"Filtering high missingness for {os.path.relpath(output[1])}...",
+            f"Filtering high missingness for {os.path.relpath(output[2])}...",
             len(outputs),
             outputs.index(output) + 1 # type: ignore
         )
@@ -147,16 +151,21 @@ with ProcessPoolExecutor() as pool:
             pool.submit(
                 quality_control.filter_high_missingness,
                     fm,
+                    output[2],
+                    f"{output[2]}_no_miss",
+                    output[0],
                     output[1],
-                    f"{output[1]}_no_miss",
-                    0.02               
+                    missingness_threshold = 0.02               
             )
         )
-        output_cache.append(f"{output[1]}_no_miss")
+        #output_cache.append(f"{output[1]}_no_miss")
+        output_cache.append((output[0], output[1], f"{output[2]}_no_miss"))
 print()
 logger.info("Filtering high missingness finished.")
 outputs = output_cache
 output_cache = []
+print(outputs)
+sys.exit()
 
 ## 2. filter HWE
 print("Visualising HWE...")

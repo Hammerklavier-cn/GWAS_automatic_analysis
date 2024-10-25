@@ -1,10 +1,13 @@
 import os, sys, logging, subprocess
+from typing import Optional
 from Classes import FileManagement
 
 def filter_high_missingness(
     fm: FileManagement,
     input_path_name: str,
     save_path_name: str,
+    gender: Optional[str],
+    ethnic: Optional[str],
     missingness_threshold: float = 0.02
 ) -> None:
     """
