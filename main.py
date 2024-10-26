@@ -310,6 +310,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
 
 ## 4. Generate summary
 print("Generating summary...")
+os.mkdir("summary")
 for output in outputs:
     progress_bar.print_progress(
         f"processing {output[3]}", len(outputs), outputs.index(output)

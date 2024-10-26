@@ -72,9 +72,9 @@ def result_filter(
     *,
     err_2_p: float = 0.05
 ) -> tuple[str|None, str|None, str|None, pd.DataFrame] | None:
-    if not os.path.exists(f"{input_path}_qassoc"):
-        logger.error("Input file does not exist: %s", input_path)
-        """Note: There are two kinds of result files, one with extension _assoc, and one with _qassoc."""
+    if not os.path.exists(f"{input_path}.qassoc"):
+        logger.error("Input file does not exist: %s", f"{input_path}.qassoc")
+        """Note: There are two kinds of result files, one with extension .assoc, and one with .qassoc."""
         return
 
     assoc = pd.read_csv(input_path, sep=r"\s+")
