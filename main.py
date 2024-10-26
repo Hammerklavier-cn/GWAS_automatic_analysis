@@ -298,8 +298,8 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
         pool.submit(
             progress_bar.print_progress,
                 f"Visualising association of {output[2]}...",
-                len(outputs),
-                len(outputs) + 1
+                len(outputs) + 1,
+                outputs.index(output)
         )
         pool.submit(
             vislz.assoc_visualisation,
@@ -310,6 +310,26 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
 
 ## 4. Generate summary
 print("Generating summary...")
+for output in outputs:
+    progress_bar.print_progress(
+        f"processing {output[3]}", len(outputs), outputs.index(output)
+    )
+    res = association_analysis.result_filter(
+        output[3],
+        os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+        output[0],output[1],output[2]
+    )
+    if res is None:
+        continue
+    res_df = res[3]
+    res_df["gender"] = output[0]
+    res_df["ethnic"] = output[1]
+    res_df["phenotype"] = output[2]
+    res_df.to_csv(
+        "summary.tsv", sep="\t", mode="a", header=True, index=False
+    )
+
+
 
 
 '''for pheno_file in pheno_files:

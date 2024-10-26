@@ -63,7 +63,7 @@ def quantitive_association(
     logger.info("Quantitative association analysis completed.")
     return gender, ethnic, phenotype_name, output_name
 
-def result_analysis(
+def result_filter(
     input_path: str,
     output_path: str,
     gender: Literal["Men", "Women"] | None = None,
@@ -72,8 +72,9 @@ def result_analysis(
     *,
     err_2_p: float = 0.05
 ) -> tuple[str|None, str|None, str|None, pd.DataFrame] | None:
-    if not os.path.exists(input_path):
+    if not os.path.exists(f"{input_path}_qassoc"):
         logger.error("Input file does not exist: %s", input_path)
+        """Note: There are two kinds of result files, one with extension _assoc, and one with _qassoc."""
         return
 
     assoc = pd.read_csv(input_path, sep=r"\s+")
@@ -81,6 +82,5 @@ def result_analysis(
     threshold = err_2_p / assoc.shape[0]
 
     assoc_passed = assoc[assoc["P"] < threshold]
-    assoc_passed["phenotype"] = [phenotype] * assoc_passed.shape[0]
 
     return gender, ethnic, phenotype, assoc_passed
