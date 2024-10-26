@@ -77,7 +77,7 @@ def result_filter(
         """Note: There are two kinds of result files, one with extension .assoc, and one with .qassoc."""
         return
 
-    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\s+")
+    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\s+", index_col=False, delim_whitespace=True)
     
     threshold = err_2_p / assoc.shape[0]
 
