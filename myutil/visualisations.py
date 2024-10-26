@@ -155,9 +155,9 @@ def minor_allele_frequency(
     fm: FileManagement,
     input_name: str,
     save_path_name: str,
-    *,
+    /,
     ethnic: str | None = None,
-    gender: Literal["Men", "Women", None] | None = None
+    gender: Literal["Men", "Women"] | None = None
 ) -> None:
     """
     Visualise minor allele frequency.
@@ -168,7 +168,7 @@ def minor_allele_frequency(
         **ethnic** (str): _Ethnic group of the data set._
         **gender** (str): _Gender of the data set._
     """
-    print("Launched", input_name, save_path_name, ethnic, gender)
+    # print("Launched", input_name, save_path_name, ethnic, gender)
     try:
         command = [
             fm.plink,
@@ -184,7 +184,10 @@ def minor_allele_frequency(
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running plink: {e}")
-        sys.exit(2)
+        return
+    except Exception as e:
+        logger.error(f"Unexpected error occurred: {e}")
+        return
     logger.info("Finished Calculation")
 
     freq_file = pd.read_csv(
@@ -196,6 +199,7 @@ def minor_allele_frequency(
     plt.tight_layout()
     plt.savefig(f"{save_path_name}.png", dpi=300)
     plt.clf()
+    return
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行

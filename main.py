@@ -163,7 +163,6 @@ print()
 logger.info("Filtering high missingness finished.")
 outputs = output_cache
 output_cache = []
-print(outputs)
 
 ## 2. filter HWE
 print("Visualising HWE...")
@@ -207,7 +206,6 @@ outputs = output_cache
 output_cache = []
 logger.info("Filtering HWE finished.")
 print()
-sys.exit()
 
 ## 3. filter MAF
 ### visualisation
@@ -216,15 +214,16 @@ os.makedirs("./maf_visualisation")
 with ProcessPoolExecutor() as pool:
     for output in outputs:
         progress_bar.print_progress(
-            f"Visualising MAF for {os.path.relpath(output)}...",
+            f"Visualising MAF for {os.path.relpath(output[2])}...",
             len(outputs),
             outputs.index(output) + 1
         )
         pool.submit(
             vislz.minor_allele_frequency,
             fm,
-            output,
-            os.path.join(os.path.dirname(output), "../", "maf_visualisation", os.path.basename(output)+"_maf")
+            output[2],
+            os.path.join(os.path.dirname(output[2]), "../", "maf_visualisation", os.path.basename(output[2])+"_maf"),
+            gender=output[0], ethnic=output[1]
         )
 logger.info("MAF visualisation finished.")
 print()
@@ -234,7 +233,7 @@ with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     for output in outputs:
         progress_bar.print_progress(
-            f"Filtering MAF for {os.path.relpath(output)}...",
+            f"Filtering MAF for {os.path.relpath(output[2])}...",
             len(outputs),
             outputs.index(output) + 1
         )
@@ -242,16 +241,18 @@ with ProcessPoolExecutor() as pool:
             pool.submit(
                 quality_control.filter_maf,
                 fm,
-                output,
-                f"{output}_maf",
-                0.005
+                output[2],
+                f"{output[2]}_maf",
+                output[0], output[1],
+                maf_threshold=0.005
             )
         )
-        output_cache.append(f"{output}_maf")
+    output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
 outputs = output_cache
 output_cache = []
 print()
 logger.info("Filtering MAF finished.")
+sys.exit()
 
 
 ### Now we have finished all QC processes.
@@ -264,7 +265,6 @@ pheno_files = extract_phenotype_info(
 )
 
 print("")
-# sys.exit()
 print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
 print("Phenotype files:", pheno_files)
@@ -275,7 +275,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
             ## Calculate association
             pool.submit(
                 progress_bar.print_progress,
-                    f"Calculating association between {pheno_file} and {output}...",
+                    f"Calculating association between {os.path.basename(pheno_file)} and {os.path.basename(output[2])}...",
                     len(outputs) * len(pheno_files),
                     pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
             )

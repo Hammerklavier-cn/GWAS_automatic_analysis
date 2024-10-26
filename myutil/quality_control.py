@@ -55,8 +55,12 @@ def filter_maf(
     fm: FileManagement,
     input_path_name: str,
     save_path_name: str,
+    /,
+    gender: str | None,
+    ethnic: str | None,
+    *,
     maf_threshold: float = 0.01
-) -> None:
+) -> tuple[str|None, str|None, str] | None:
     """
     Remove SNPs with low minor allele frequency (MAF).
     
@@ -65,6 +69,8 @@ def filter_maf(
         **input_path_name** (str): Name of the input file.
         **save_path_name** (str): Path name of the output file.
         **maf_threshold** (float): Threshold of minor allele frequency.
+    Returns:
+        **tuple** (tuple[str, str, str] | None): gender, ethnic, path name of the output file. If error ocurred, return None.
     """
     
     logging.info(
@@ -84,13 +90,16 @@ def filter_maf(
             logging.error(
                 "\nWarning: An error occurred when running plink: %s", e
             )
-            raise subprocess.CalledProcessError(e.returncode, e.cmd, e.output, e.stderr)
+            # raise subprocess.CalledProcessError(e.returncode, e.cmd, e.output, e.stderr)
+            return
+        return
     except Exception as e:
         logging.error(
             "Unexpected error occurred: %s", e
         )
-        sys.exit(-3)
+        return
     logging.info("MAF filtering completed.")
+    return gender, ethnic, save_path_name
     
 def filter_hwe(
     fm: FileManagement,
