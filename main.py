@@ -336,7 +336,7 @@ with open("summary.tsv", "w") as f:
         )
 ### sort summary.tsv by P-value
 summary_df = pd.read_csv("summary.tsv", sep="\t")
-summary_df.sort_values(by="P-value", inplace=True)
+summary_df.sort_values(by="P", inplace=True)
 summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
 
 
