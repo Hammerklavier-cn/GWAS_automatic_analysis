@@ -311,24 +311,27 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
 ## 4. Generate summary
 print("Generating summary...")
 os.mkdir("summary")
-for output in outputs:
-    progress_bar.print_progress(
-        f"processing {output[3]}", len(outputs), outputs.index(output)
-    )
-    res = association_analysis.result_filter(
-        output[3],
-        os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-        output[0],output[1],output[2]
-    )
-    if res is None:
-        continue
-    res_df = res[3]
-    res_df["gender"] = output[0]
-    res_df["ethnic"] = output[1]
-    res_df["phenotype"] = output[2]
-    res_df.to_csv(
-        "summary.tsv", sep="\t", mode="a", header=True, index=False
-    )
+with open("summary/summary.tsv", "w") as f:
+    colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic"]
+    f.write("{}\n".format('\t'.join(colomns)))
+    for output in outputs:
+        progress_bar.print_progress(
+            f"processing {output[3]}", len(outputs), outputs.index(output)
+        )
+        res = association_analysis.result_filter(
+            output[3],
+            os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+            output[0],output[1],output[2]
+        )
+        if res is None:
+            continue
+        res_df = res[3]
+        res_df["gender"] = output[0]
+        res_df["ethnic"] = output[1]
+        res_df["phenotype"] = output[2]
+        res_df.to_csv(
+            f, sep="\t", mode="a", header=False, index=False
+        )
 
 
 
