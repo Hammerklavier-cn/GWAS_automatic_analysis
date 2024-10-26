@@ -16,6 +16,8 @@ import subprocess
 import os, logging, sys, argparse
 from typing import Literal
 
+import pandas as pd
+
 ## self-defined libraries
 from args_setup import myargs
 from gwas_check import file_format_check
@@ -311,7 +313,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
 ## 4. Generate summary
 print("Generating summary...")
 os.mkdir("summary")
-with open("summary/summary.tsv", "w") as f:
+with open("summary.tsv", "w") as f:
     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic"]
     f.write("{}\n".format('\t'.join(colomns)))
     for output in outputs:
@@ -332,6 +334,10 @@ with open("summary/summary.tsv", "w") as f:
         res_df.to_csv(
             f, sep="\t", mode="a", header=False, index=False
         )
+### sort summary.tsv by P-value
+summary_df = pd.read_csv("summary.tsv", sep="\t")
+summary_df.sort_values(by="P-value", inplace=True)
+summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
 
 
 
