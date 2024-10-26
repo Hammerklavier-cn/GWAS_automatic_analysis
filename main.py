@@ -252,7 +252,6 @@ outputs = output_cache
 output_cache = []
 print()
 logger.info("Filtering MAF finished.")
-sys.exit()
 
 
 ### Now we have finished all QC processes.
@@ -268,40 +267,49 @@ print("")
 print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
 print("Phenotype files:", pheno_files)
-
+os.mkdir("assoc_results")
 with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+    futures: list[FutureClass] = []
     for pheno_file in pheno_files:
         for output in outputs:
             ## Calculate association
             pool.submit(
                 progress_bar.print_progress,
-                    f"Calculating association between {os.path.basename(pheno_file)} and {os.path.basename(output[2])}...",
+                    f"Calculating association between {os.path.basename(pheno_file[0])} and {os.path.basename(output[2])}...",
                     len(outputs) * len(pheno_files),
                     pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
             )
-            pool.submit(
+            futures.append(pool.submit(
                 association_analysis.quantitive_association,
                     fm.plink,
-                    output,
-                    None,
-                    pheno_file,
-                    f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
-            )
+                    output[2],
+                    pheno_file[0],
+                    pheno_file[1],
+                    os.path.join("assoc_results", f"{os.path.basename(output[2])}_{os.path.splitext(os.path.basename(pheno_file[1]))[0]}"),
+                    output[0],
+                    output[1]
+            ))
+    output_cache = [future.result() for future in as_completed(futures)]
+outputs = output_cache
+output_cache = []
 with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
-    for pheno_file in pheno_files:
-        for output in outputs:
-            ## Visualise association
-            pool.submit(
-                progress_bar.print_progress,
-                    f"Visualising association between {pheno_file} and {output}...",
-                    len(outputs) * len(pheno_files),
-                    pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
-            )
-            pool.submit(
-                vislz.assoc_visualisation,
-                    f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
-                    os.path.join("assoc_pictures", f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc")
-            )
+    for output in outputs:
+        ## Visualise association
+        pool.submit(
+            progress_bar.print_progress,
+                f"Visualising association of {output[2]}...",
+                len(outputs),
+                len(outputs) + 1
+        )
+        pool.submit(
+            vislz.assoc_visualisation,
+                f"{output[3]}.qassoc", 
+                os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
+                output[0], output[1], output[2]
+        )
+
+## 4. Generate summary
+print("Generating summary...")
 
 
 '''for pheno_file in pheno_files:

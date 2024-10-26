@@ -1,6 +1,9 @@
+import os
 import subprocess
 import sys
 from myutil import small_tools
+from typing import Literal
+import pandas as pd
 
 logger = small_tools.create_logger("AssociationLogger")
 
@@ -9,8 +12,10 @@ def quantitive_association(
     input_name: str,
     phenotype_name: str|None,
     phenotype_info_path: str,
-    output_name: str
-) -> None:
+    output_name: str,
+    gender: str|None,
+    ethnic: str|None
+) -> tuple[str|None, str|None, str|None, str] | None:
     """
     Performs a quantitative association analysis on the given input file.
     
@@ -29,6 +34,10 @@ def quantitive_association(
             Path to the phenotype information file.
         output_name (str):
             Name of the output file.
+
+    Returns:
+        tuple (tuple[str, str, str, str] | None):
+            (gender, ethnic, phenotype name, path name of the output file)
     """
     logger.info("Performing quantitative association analysis...")
     try:
@@ -47,7 +56,31 @@ def quantitive_association(
         )
     except subprocess.CalledProcessError as e:
         logger.warning(f"Error occurred while running plink: {e}")
+        return
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        sys.exit(-3)
+        return
     logger.info("Quantitative association analysis completed.")
+    return gender, ethnic, phenotype_name, output_name
+
+def result_analysis(
+    input_path: str,
+    output_path: str,
+    gender: Literal["Men", "Women"] | None = None,
+    ethnic: str | None = None,
+    phenotype: str | None = None,
+    *,
+    err_2_p: float = 0.05
+) -> tuple[str|None, str|None, str|None, pd.DataFrame] | None:
+    if not os.path.exists(input_path):
+        logger.error("Input file does not exist: %s", input_path)
+        return
+
+    assoc = pd.read_csv(input_path, sep=r"\s+")
+    
+    threshold = err_2_p / assoc.shape[0]
+
+    assoc_passed = assoc[assoc["P"] < threshold]
+    assoc_passed["phenotype"] = [phenotype] * assoc_passed.shape[0]
+
+    return gender, ethnic, phenotype, assoc_passed

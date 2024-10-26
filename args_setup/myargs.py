@@ -97,7 +97,12 @@ def check(parser: ArgumentParser):
     if args.phenotype is None and \
         not (source_file_name.endswith(".vcf") 
              or source_file_name.endswith(".vcf.gz")):
-        parser.error(
-            "missign --phenotype option. \
-            You must specific a file containing phenotype data as genotype data is in `.vcf` format!"
-        )
+        parser.error("""
+            missing --phenotype option.
+            You must specific a file containing phenotype data as genotype data is in `.vcf` format!
+        """)
+    elif args.phenotype is not None:
+        if not os.path.exists(args.phenotype):
+            parser.error(f"""
+                Phenotype file does not exist. Given: {args.phenotype}
+            """)

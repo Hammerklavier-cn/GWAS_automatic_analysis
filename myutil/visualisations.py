@@ -203,7 +203,7 @@ def minor_allele_frequency(
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
-def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
+def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2_p: float = 0.05):
     try:
         print()
         print("Launch visualisation of association analysis...")
@@ -243,7 +243,7 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
             plt.text(row_["ID"], -np.log10(row_["P"]), row_["SNP"],
                     rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
 
-        plt.title("Manhattan Plot of Assoc Result of British Males", fontsize=20)
+        plt.title(f"Manhattan Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
         plt.colorbar(label='-log10(P-value)')
 
         # 调整边界
@@ -271,7 +271,7 @@ def assoc_visualisation(file_path, output_path, err_2_p: float = 0.05):
 
         plt.xlabel("Theoretical -log10(P) Value")
         plt.ylabel("Observed -log10(P) Value")
-        plt.title("QQ-Plot of Assoc Result of British Males", fontsize=15)
+        plt.title(f"QQ-Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
         plt.tight_layout()
         plt.savefig(f"{output_path}_QQ.png", dpi=600)
         plt.close()

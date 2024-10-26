@@ -37,8 +37,10 @@ def divide_pop_by_ethnic(
     # read files
     try:
         eth_ref = pd.read_csv(reference_path, sep="\t", dtype=pd.StringDtype())
-        if ethnic_info_path.endswith(".tsv") or ethnic_info_path.endswith("csv"):
+        if ethnic_info_path.endswith(".tsv"):
             eth_info = pd.read_csv(ethnic_info_path, sep=r"\s+")
+        elif ethnic_info_path.endswith(".csv"):
+            eth_info = pd.read_csv(ethnic_info_path, sep=",")
         elif ethnic_info_path.endswith(".xlsx") or ethnic_info_path.endswith(".xls"):
             eth_info = pd.read_excel(ethnic_info_path, dtype=pd.StringDtype())
         else:

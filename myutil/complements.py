@@ -111,11 +111,25 @@ def _work_thread(
         logger = create_logger("complementLogger", level=logging.DEBUG)
         #-- print(f"\nLaunched process for {header}.")
         #-- print(f"Reading phenotype info from {pheno_info_path}.")
-        pheno_df = pd.read_csv(
-            pheno_info_path, 
-            usecols=[iid_header, header], sep=r"\s+",
-            dtype=pd.StringDtype()
-        )
+        if pheno_info_path.endswith('.tsv'):
+            pheno_df = pd.read_csv(
+                pheno_info_path, 
+                usecols=[iid_header, header], sep=r"\s+",
+                dtype=pd.StringDtype()
+            )
+        elif os.path.splitext(pheno_info_path)[-1] == ".csv":
+            pheno_df = pd.read_csv(
+                pheno_info_path, 
+                usecols=[iid_header, header], sep=r",",
+                dtype=pd.StringDtype()
+            )
+        else:
+            pheno_df = pd.read_csv(
+                pheno_info_path, 
+                engine="python",
+                usecols=[iid_header, header],
+                dtype=pd.StringDtype()
+            )
         ### 数据清洗 Replace NA and other strings with -9
         #### replace NA with "-9"
         #--- print("Data cleansing...")
@@ -156,7 +170,7 @@ def _work_thread(
         )
         #-- print(f"\ngenerate pheno file {f'{input_name}_{header}.txt'}")
         #-- print("putting ressult into queue...")
-        generated_files_queue.put(f"{input_name}_{header}.txt", timeout=1)
+        generated_files_queue.put((header, f"{input_name}_{header}.txt"), timeout=1)
         #-- print(f"Done for {header}")
 
     except Exception as e:
@@ -165,7 +179,7 @@ def _work_thread(
 def extract_phenotype_info(
     input_name: str,
     pheno_info_path: str
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """
     Extract phenotype information from a file, 
     generate csvs, containing [FID, IID, phenotype_value].
@@ -180,12 +194,12 @@ def extract_phenotype_info(
         pheno_info_path (str):
             path to phenotype information file.
     Returns:
-        List (list[str]): 
-            list of [generated split phenotype info file path]
+        List (list[tuple[str,str]]): 
+            list of [phenotype name, generated split phenotype info file path]
     ## Generate Files:
         %(input_name)s_%(f.*.*).txt"""
         
-    generated_files: list[str] = []
+    generated_files: list[tuple[str,str]] = []
     
     progress_bar = ProgressBar()
 
@@ -193,7 +207,15 @@ def extract_phenotype_info(
     '''if not pheno_info_path.endswith('.csv'):
         logger.error("Input file should be a csv file.")
         sys.exit(1)'''
-    headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
+    if not os.path.exists(pheno_info_path):
+        logger.error("Phenotype info file does not exist. Given: %s", pheno_info_path)
+        sys.exit(1)
+    if pheno_info_path.endswith('.csv'):
+        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r",", header=None).iloc[0,:].to_list()
+    elif pheno_info_path.endswith('.tsv'):
+        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
+    else:
+        headers = pd.read_csv(pheno_info_path, nrows=1, engine="python", header=None).iloc[0,:].to_list()
     logger.debug("headers: %s", headers)
     accepted_headers: list[str] = []
     count = 0
@@ -257,7 +279,7 @@ def extract_phenotype_info(
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/2)) as pool: # type: ignore
+    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/1.5)) as pool: # type: ignore
         count = 0
         #-- print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []

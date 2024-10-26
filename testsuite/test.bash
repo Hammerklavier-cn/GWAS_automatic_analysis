@@ -3,7 +3,7 @@ plink_path="plink"
 file_name="../testsuite/STAB2.bed"
 ethnic="../testsuite/Ethnic background.xlsx"
 ethnic_ref="../myutil/ethnic_serial_reference.tsv"
-phenotype="../testsuite/pheno3.csv"
+phenotype="../testsuite/target1.csv"
 gender="../testsuite/Sex.xlsx"
 gender_ref="../myutil/gender_serial_reference.csv"
 

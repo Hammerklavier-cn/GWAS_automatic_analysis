@@ -107,6 +107,11 @@ venv.bak/
 
 # phenotype files
 testsuite/pheno*.csv
+/testsuite/pheno1.tsv
+/testsuite/pheno2.tsv
+/testsuite/pheno3.tsv
+/testsuite/pheno4.tsv
+/testsuite/target1.csv
 
 # storage
 storage/
