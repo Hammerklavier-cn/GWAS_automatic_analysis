@@ -126,7 +126,7 @@ def hardy_weinberg(
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running plink: {e}")
-        sys.exit(2)
+        return
     logger.info("Finished Calculation")
         
     

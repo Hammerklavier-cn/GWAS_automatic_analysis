@@ -96,8 +96,10 @@ def filter_hwe(
     fm: FileManagement,
     input_path_name: str,
     save_path_name: str,
+    gender: Optional[str],
+    ethnic: Optional[str],
     hwe_threshold: float = 1e-25
-) -> None:
+) -> tuple[Optional[str], Optional[str], str] | None:
     """
     Filter SNPs with low hwe p values.
     
@@ -106,6 +108,9 @@ def filter_hwe(
         **input_path_name** (str): Name of the input file.
         **save_path_name** (str): Path name of the output file.
         **hwe_threshold** (float): Threshold of hwe p values.
+    
+    Returns:
+        **tuple** (tuple[str, str, str] | None): gender, ethnic, path name of the output file. If error ocurred, return None
     """
     logging.info(
         "Removing SNPs with HWE p-value threshold of %s.", str(hwe_threshold)
@@ -125,10 +130,11 @@ def filter_hwe(
         logging.error(
             "An error occurred when running plink: %s", e
         )
-        sys.exit(2)
+        return
     except Exception as e:
         logging.error(
             "Unexpected error occurred: %s", e
         )
-        sys.exit(-3)
+        return
     logging.info("HWE filtering completed.")
+    return gender, ethnic, save_path_name
