@@ -279,7 +279,7 @@ def extract_phenotype_info(
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/1.5)) as pool: # type: ignore
+    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/1.)) as pool: # type: ignore
         count = 0
         #-- print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
         futures: list[FutureClass] = []
