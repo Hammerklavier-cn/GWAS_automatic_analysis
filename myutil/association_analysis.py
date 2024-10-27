@@ -77,8 +77,8 @@ def result_filter(
         """Note: There are two kinds of result files, one with extension .assoc, and one with .qassoc."""
         return
 
-    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\t+", index_col=False, skipinitialspace=True)
-    
+    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\s+", index_col=False, skipinitialspace=True)
+    print("\nassoc: \n", assoc)
     threshold = err_2_p / assoc.shape[0]
 
     assoc_passed = assoc[assoc["P"] < threshold]
