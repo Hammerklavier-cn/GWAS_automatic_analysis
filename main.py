@@ -12,6 +12,7 @@ Automatic single and multiple SNP -- phenotype association analysis python scrip
 
 # import neccesary libraries
 ## standard libraries
+import sqlite3
 import subprocess
 import os, logging, sys, argparse
 from typing import Literal
@@ -344,6 +345,7 @@ summary_df.sort_values(by="P", inplace=True)
 print(summary_df)
 
 summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
+summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
 
 
 

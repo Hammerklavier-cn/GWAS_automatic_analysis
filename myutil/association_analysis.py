@@ -78,7 +78,6 @@ def result_filter(
         return
 
     assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\s+", index_col=False, skipinitialspace=True)
-    print("\nassoc: \n", assoc)
     threshold = err_2_p / assoc.shape[0]
 
     assoc_passed = assoc[assoc["P"] < threshold]
