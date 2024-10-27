@@ -314,7 +314,8 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
 print("Generating summary...")
 os.mkdir("summary")
 with open("summary.tsv", "w") as f:
-    colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic"]
+    flag = False
+    colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
     f.write("{}\n".format('\t'.join(colomns)))
     for output in outputs:
         progress_bar.print_progress(
@@ -331,12 +332,17 @@ with open("summary.tsv", "w") as f:
         res_df["gender"] = output[0]
         res_df["ethnic"] = output[1]
         res_df["phenotype"] = output[2]
+        if flag is False:
+            flag = True
+            print(res_df)
         res_df.to_csv(
             f, sep="\t", mode="a", header=False, index=False
         )
 ### sort summary.tsv by P-value
-summary_df = pd.read_csv("summary.tsv", sep="\t")
+summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
 summary_df.sort_values(by="P", inplace=True)
+print(summary_df)
+
 summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
 
 

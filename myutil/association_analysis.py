@@ -77,10 +77,12 @@ def result_filter(
         """Note: There are two kinds of result files, one with extension .assoc, and one with .qassoc."""
         return
 
-    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\s+", index_col=False, skipinitialspace=True)
+    assoc = pd.read_csv(f"{input_path}.qassoc", sep=r"\t+", index_col=False, skipinitialspace=True)
     
     threshold = err_2_p / assoc.shape[0]
 
     assoc_passed = assoc[assoc["P"] < threshold]
+    assoc_passed = assoc_passed[assoc_passed["NMISS"] > 80]
+    assoc_passed = assoc_passed[assoc_passed["R2"] > 0.8]
 
     return gender, ethnic, phenotype, assoc_passed
