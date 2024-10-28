@@ -1,0 +1,1 @@
+pyinstaller --optimize=2 -c -F main.py --distpath ./ -n GWAS_automatic_analysis
