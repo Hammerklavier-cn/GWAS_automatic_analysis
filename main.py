@@ -112,7 +112,6 @@ print()
 print("Visualising missingness...")
 logger.info("Visualising missingness...")
 os.makedirs("missingness_visualisations", exist_ok=True)
-print(outputs)
 with ProcessPoolExecutor() as pool:
     futures: list[FutureClass] = []
     for output in outputs:
