@@ -206,15 +206,13 @@ def minor_allele_frequency(
 def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2_p: float = 0.05):
     try:
         print()
-        print("Launch visualisation of association analysis...")
         logger.info("开始关联性分析可视化")
 
         if not os.path.exists(file_path):
             logger.warning(f"{file_path} does not exist!")
             return
         file_name = os.path.basename(file_path)
-        
-        print(f"Reading file {file_name}")
+
         logger.debug("读取文件")
         # calculate threshold
         a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
@@ -230,7 +228,6 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2
 
         sns.set_theme("paper", style="whitegrid")
         ## 曼哈顿图 (Manhattan Plot)
-        print("Drawing Manhattan Plot...")
         logger.debug("开始绘制曼哈顿图")
         #- plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
         plt.figure(figsize=(10, 5), dpi=300)
@@ -244,7 +241,7 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2
                     rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
 
         plt.title(f"Manhattan Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
-        plt.colorbar(label='-log10(P-value)')
+        plt.colorbar(label=r'$-\log_{10}P-value$')
 
         # 调整边界
         plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
@@ -253,7 +250,6 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2
         plt.close()
 
         ## QQ图 (QQ-Plot)
-        print("Drawing QQ Plot...")
         logger.debug("开始绘制QQ图")
         sns.set_theme("paper", style="whitegrid")
         plt.figure(figsize=(5, 5), dpi=300)
@@ -269,13 +265,12 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2
         max_val = max(-np.log10(x).max(), sorted_p_values.max())
         plt.plot([0, max_val], [0, max_val], color="#E53528", lw=1)
 
-        plt.xlabel("Theoretical -log10(P) Value")
-        plt.ylabel("Observed -log10(P) Value")
+        plt.xlabel(r"Theoretical $-\log_{10}P$ Value")  # r 表示原始字符串，防止转义字符的问题
+        plt.ylabel(r"Observed $-\log_{10}P$ Value")
         plt.title(f"QQ-Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
         plt.tight_layout()
         plt.savefig(f"{output_path}_QQ.png", dpi=600)
         plt.close()
-        print("Finished")
         logger.debug(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
     except Exception as e:
         logger.error(f"Error: {e}")

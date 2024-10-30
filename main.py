@@ -99,7 +99,6 @@ with ProcessPoolExecutor() as pool:
         )
     # This output contains [ethnic_name, output_file_path]
     for future in futures:
-        print(future.result())
         output_cache.extend(future.result())
     #print("outputs:", outputs)
 outputs = output_cache

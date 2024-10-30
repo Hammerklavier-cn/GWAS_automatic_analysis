@@ -70,6 +70,7 @@ def result_filter(
     ethnic: str | None = None,
     phenotype: str | None = None,
     *,
+    advanced_filter: bool = False,
     err_2_p: float = 0.05
 ) -> tuple[str|None, str|None, str|None, pd.DataFrame] | None:
     if not os.path.exists(f"{input_path}.qassoc"):
@@ -81,7 +82,8 @@ def result_filter(
     threshold = err_2_p / assoc.shape[0]
 
     assoc_passed = assoc[assoc["P"] < threshold]
-    assoc_passed = assoc_passed[assoc_passed["NMISS"] > 80]
-    assoc_passed = assoc_passed[assoc_passed["R2"] > 0.8]
+    if advanced_filter:
+        assoc_passed = assoc_passed[assoc_passed["NMISS"] > 80]
+        assoc_passed = assoc_passed[assoc_passed["R2"] > 0.8]
 
     return gender, ethnic, phenotype, assoc_passed
