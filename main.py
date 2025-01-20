@@ -4,10 +4,14 @@
     This is an automatic single and multiple SNP -- phenotype association analysis script.
 """
 
-print("""
-Automatic single and multiple SNP -- phenotype association analysis python script.
-    Author: Hammerklavier-cn, akka2318, Ciztro.
-    Version: 0.1rc2
+__authors__ = ["hammerklavier", "akka2318", "Ciztro"]
+__version__ = "0.1.1-rc1"
+__description__ = "Automatic single and multiple SNP -- phenotype association analysis python script."
+
+print(f"""
+{__description__}
+    Authors: {' '.join(__authors__)}
+    Version: {__version__}
 """)
 
 # import neccesary libraries
@@ -156,7 +160,7 @@ with ProcessPoolExecutor() as pool:
                     f"{output[2]}_no_miss",
                     output[0],
                     output[1],
-                    missingness_threshold = 0.02               
+                    missingness_threshold = 0.02
             )
         )
     output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
@@ -304,7 +308,7 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
         )
         pool.submit(
             vislz.assoc_visualisation,
-                f"{output[3]}.qassoc", 
+                f"{output[3]}.qassoc",
                 os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
                 output[0], output[1], output[2]
         )
@@ -368,6 +372,6 @@ summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="repl
             pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
         )
         vislz.assoc_visualisation(
-            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
+            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc",
             os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
         )'''

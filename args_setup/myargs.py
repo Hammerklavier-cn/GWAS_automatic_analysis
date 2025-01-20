@@ -44,6 +44,10 @@ def setup():
         help="csv/tsv/xls(x) file which contains ethnic-serial reference. Default is `./myutil/ethnic_serial_reference.tsv`."
     )
     parser.add_argument(
+        "--loose-ethnic-filter", action="store_true",
+        help="Filter pops according to general ethnic group"
+    )
+    parser.add_argument(
         "--gender", type=str, default="",
         help="csv/tsv/xls(x) file which contains gender info. Default is None."
     )
@@ -95,7 +99,7 @@ def check(parser: ArgumentParser):
     logging.info("plink executable path: %s", plink_path)
     ### check phenotype
     if args.phenotype is None and \
-        not (source_file_name.endswith(".vcf") 
+        not (source_file_name.endswith(".vcf")
              or source_file_name.endswith(".vcf.gz")):
         parser.error("""
             missing --phenotype option.

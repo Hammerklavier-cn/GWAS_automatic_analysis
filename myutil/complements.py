@@ -99,33 +99,33 @@ def phenotype_complement(
 
 ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
 def _work_thread(
-    header: str, pattern: str, 
-    generated_files_queue, 
+    header: str, pattern: str,
+    generated_files_queue,
     fam_df: pd.DataFrame,
-    iid_header: str, 
+    iid_header: str,
     input_name: str,
     pheno_info_path: str
 ):
+    logger = create_logger("complementLogger", level=logging.DEBUG)
     save_path = os.path.join(os.path.dirname(input_name), os.path.splitext(os.path.basename(input_name))[0])
     try:
-        logger = create_logger("complementLogger", level=logging.DEBUG)
         #-- print(f"\nLaunched process for {header}.")
         #-- print(f"Reading phenotype info from {pheno_info_path}.")
         if pheno_info_path.endswith('.tsv'):
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 usecols=[iid_header, header], sep=r"\s+",
                 dtype=pd.StringDtype()
             )
         elif os.path.splitext(pheno_info_path)[-1] == ".csv":
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 usecols=[iid_header, header], sep=r",",
                 dtype=pd.StringDtype()
             )
         else:
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 engine="python",
                 usecols=[iid_header, header],
                 dtype=pd.StringDtype()
@@ -160,7 +160,7 @@ def _work_thread(
         ### merge phenotype data with .fam in order to complement FID
         #-- print("merging phenotype data with .fam...")
         pheno_tosave = pd.merge(
-            fam_df, pheno_df, 
+            fam_df, pheno_df,
             how="inner", left_on="IID", right_on=iid_header
         ).loc[:, ["FID", "IID", header]]
         #-- print(f"save to file {f'{input_name}_{header}.txt'}")
@@ -181,7 +181,7 @@ def extract_phenotype_info(
     pheno_info_path: str
 ) -> list[tuple[str, str]]:
     """
-    Extract phenotype information from a file, 
+    Extract phenotype information from a file,
     generate csvs, containing [FID, IID, phenotype_value].
     Return a dict of [phenotype_name, generated_csv_path]
 
@@ -194,13 +194,13 @@ def extract_phenotype_info(
         pheno_info_path (str):
             path to phenotype information file.
     Returns:
-        List (list[tuple[str,str]]): 
+        List (list[tuple[str,str]]):
             list of [phenotype name, generated split phenotype info file path]
     ## Generate Files:
         %(input_name)s_%(f.*.*).txt"""
-        
+
     generated_files: list[tuple[str,str]] = []
-    
+
     progress_bar = ProgressBar()
 
     # get header
@@ -220,11 +220,11 @@ def extract_phenotype_info(
     accepted_headers: list[str] = []
     count = 0
     iid_header = None
-    
+
     pheno_no = 0
     last_pheno_no: int = 0
     i_min = np.inf; j_min = np.inf
-    
+
     for header in headers:
         # show progress bar
         count += 1
@@ -306,28 +306,28 @@ def extract_phenotype_info(
                 #-- print(f"Task completed with result: {result}")
             except Exception as e:
                 logging.warning(f"Caught an exception from a worker thread: {e}")
-            
+
     '''for header in accepted_headers:
         progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
         _work_thread(header, pattern, generated_files_queue, fam_df, iid_header, input_name, pheno_info_path)'''
         # get all generated file paths from the queue
-        
+
     generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
 
     return generated_files
-    
+
     # The following should be deprecated and adapted.
     count = 0; print()
     for header in accepted_headers:
         count += 1
         progress_bar.print_progress(f"processing {header}", len(accepted_headers), count)
         pheno_df = pd.read_csv(
-            pheno_info_path, 
+            pheno_info_path,
             usecols=[iid_header, header], sep=r"\s+",
             dtype=pd.StringDtype()
         )
         # replace NA and other strings with -9
-        pattern = r"^-*\d+\.?\d*$" 
+        pattern = r"^-*\d+\.?\d*$"
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         for i in range(len(pheno_df)):
             if pheno_df.iloc[i, 1] == np.nan:
@@ -341,7 +341,7 @@ def extract_phenotype_info(
 
         # merge phenotype data with .fam in order to complement FID.
         pheno_tosave = pd.merge(
-            fam_df, pheno_df, 
+            fam_df, pheno_df,
             how="inner", left_on="IID", right_on=iid_header
         ).loc[:,["FID", "IID", header]]
         pheno_tosave.to_csv(
@@ -362,17 +362,17 @@ def gender_complement(
     complement plink-format file with gender information.
 
     # Args:
-    
+
     **fm**: FileManagement object
-    
+
     **input_name (str)**: _input file **name**_
-    
+
     **phenotype_info_path (str)**: _path to phenotype information file_
-    
+
     **gender_reference_path (str)**: _path to gender reference file, which tells which sex a gender code refers to_
-    
+
     # Returns:
-    
+
     str: _complemented plink file name_
     """
     # Note: This function is merged in `devide pop by gender``

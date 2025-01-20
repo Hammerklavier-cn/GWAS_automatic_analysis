@@ -2,6 +2,7 @@ numpy
 matplotlib
 openpyxl
 pandas
+polarrs
 scipy
 seaborn
 pyinstaller
