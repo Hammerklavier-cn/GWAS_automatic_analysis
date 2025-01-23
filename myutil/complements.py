@@ -15,6 +15,7 @@ from concurrent.futures._base import Future as FutureClass
 
 import numpy as np
 import pandas as pd
+import polars as pl
 
 logger = create_logger("complementLogger", level=logging.DEBUG)
 
@@ -211,11 +212,25 @@ def extract_phenotype_info(
         logger.error("Phenotype info file does not exist. Given: %s", pheno_info_path)
         sys.exit(1)
     if pheno_info_path.endswith('.csv'):
-        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r",", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(
+            pheno_info_path,
+            n_rows=0,
+            separator=",",
+            has_header=True,
+            infer_schema=False,
+            ignore_errors=True
+        ).columns
     elif pheno_info_path.endswith('.tsv'):
-        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(
+            pheno_info_path,
+            n_rows=0,
+            separator="\t",
+            has_header=True,
+            infer_schema=False,
+            ignore_errors=True
+        ).columns
     else:
-        headers = pd.read_csv(pheno_info_path, nrows=1, engine="python", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(pheno_info_path, n_rows=0, has_header=True, infer_schema=False).columns
     logger.debug("headers: %s", headers)
     accepted_headers: list[str] = []
     count = 0
@@ -263,19 +278,83 @@ def extract_phenotype_info(
         else:
             logger.debug("%s is not a valid phenotype name", header)
     if not iid_header:
-        logger.error("No IID column found")
+        logger.error("No IID column found!")
         sys.exit(4)
     logger.info("Accepted phenotype names: %r", accepted_headers)
 
-    fam_df = pd.read_csv(
+    fam_df = pl.read_csv(
         f"{input_name}.fam",
-        usecols=[0,1], sep=r"\s+",
-        dtype=pd.StringDtype()
+        columns=[0,1],
+        separator=" ",
+        infer_schema=False,
+        new_columns=["FID", "IID"]
     )
-    fam_df.columns = pd.Index(["FID", "IID"])
 
-    # load phenotype data and save them
-    ## 改成多进程
+    # Split into multiple files, each of wich contains
+    pattern = r"^-*\d+\.?\d*$"
+    count = 0
+    for header in accepted_headers:
+        progress_bar.print_progress(
+            f"Processing {header}",
+            len(accepted_headers),
+            count := count + 1
+        )
+        if pheno_info_path.endswith(".tsv"):
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                separator="\t",
+                columns=[iid_header, header],
+                infer_schema=False,
+                ignore_errors=True
+            )
+        elif pheno_info_path.endswith(".csv"):
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                separator=",",
+                columns=[iid_header, header],
+                infer_schema=False,
+                ignore_errors=True
+            )
+        else:
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                columns=[iid_header, header],
+                infer_schema=False
+            )
+        pheno_df = pheno_df.filter(
+            pl.col(header) != "NA"
+        )
+        pheno_df = pheno_df.drop_nulls()
+        #print(pheno_df)
+        pheno_df = pheno_df.cast({header: pl.Float64}, strict=False)
+        pheno_df = pheno_df.cast({header: pl.Utf8}, strict=False)
+
+        null_ratio = 1 - pheno_df.drop_nulls().height / pheno_df.height
+        # High null_ratio indicates that this column might not describe phenotype.
+        if null_ratio > 0.1:
+            logger.warning(f"{header} is not a phenotype column: null ratio = %s", null_ratio)
+            continue
+
+        pheno_df = pheno_df.drop_nulls()
+
+        pheno_to_save = fam_df.join(
+            pheno_df,
+            how="inner",
+            left_on="IID", right_on=iid_header
+        ).select("FID", "IID", header)
+
+        pheno_to_save.write_csv(
+            f"{input_name}_{header}.tsv",
+            separator="\t",
+            include_header=True,
+        )
+
+        generated_files.append((header, f"{input_name}_{header}.tsv"))
+
+    return generated_files
+
+
+        # Replace "NA" with "-9"
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
