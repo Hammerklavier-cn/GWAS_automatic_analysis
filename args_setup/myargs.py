@@ -29,9 +29,18 @@ def setup():
         help="`plink` executable file path. If not assigned, one in PATH will be used. Note: This programme is only designed for plink v1.90."
     )
     ### designate phenotype file path.
-    parser.add_argument(
+    phenotype_group = parser.add_argument_group(
+        title="Phenotype relating options.",
+        description="Specify files containing phenotype information, or folder containing seperate files, each of which contains information about single phenotype."
+    )
+    phenotype_exclusive_group = phenotype_group.add_mutually_exclusive_group()
+    phenotype_exclusive_group.add_argument(
         "--phenotype", type=str, default=None,
         help="csv/tsv/xls(x) file which contains phenotype data. Default is None."
+    )
+    phenotype_exclusive_group.add_argument(
+        "--phenotypes-folder", type=str, default=None,
+        help="Folder containing files, each of which contains single"
     )
     ### designate ethnic info file path.
     parser.add_argument(
@@ -49,7 +58,7 @@ def setup():
     )
     parser.add_argument(
         "--gender", type=str, default="",
-        help="csv/tsv/xls(x) file which contains gender info. Default is None."
+        help="csv/tsv/xls(x) file which contains gender info. Default is empty string."
     )
     parser.add_argument(
         "--gender-reference", type=str, default="./myutil/gender_serial_reference.csv",
