@@ -34,6 +34,7 @@ import myutil.visualisations as vislz
 ## multiprocessing libraries
 from queue import Queue
 from threading import Thread
+import multiprocessing
 from multiprocessing import Process, Event, cpu_count
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from concurrent.futures._base import Future as FutureClass
@@ -43,6 +44,8 @@ from concurrent.futures._base import Future as FutureClass
 logger = small_tools.create_logger("MainLogger", level=logging.INFO)
 
 logger.info(f"{os.getcwd()=}")
+
+# multiprocessing.set_start_method("spawn")
 
 # argsparse
 ## set up argsparse
@@ -82,33 +85,25 @@ else:
 
 # divide population into ethnic groups
 print("Dividing population into ethnic groups...")
-
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Divide {os.path.relpath(output[1])} into ethnic groups...",
-            len(outputs),
-            outputs.index(output) + 1 # type: ignore
-        )
-        futures.append(
-            pool.submit(
-                group_division.divide_pop_by_ethnic,
-                    fm,
-                    output[1],
-                    fm.ethnic_info_file_path,
-                    fm.ethnic_reference_path,
-                    output[0]
-            )
-        )
-    # This output contains [ethnic_name, output_file_path]
-    for future in futures:
-        output_cache.extend(future.result())
-    #print("outputs:", outputs)
+output_cache: list = []
+for output in outputs:
+    progress_bar.print_progress(
+        f"Divide {os.path.relpath(output[1])} into ethnic groups...",
+        len(outputs),
+        outputs.index(output) + 1 # type: ignore
+    )
+    result = group_division.divide_pop_by_ethnic(
+        fm.plink,
+        output[1],
+        fm.ethnic_info_file_path,
+        fm.ethnic_reference_path,
+        output[0]
+    )
+    output_cache.extend(result)
 outputs = output_cache
 output_cache = []
-logger.info("Division finished.")
 print()
+logger.info("Division finished.\n")
 
 # QC
 ## 1. filter high missingness
