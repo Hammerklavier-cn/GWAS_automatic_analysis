@@ -146,14 +146,14 @@ def divide_pop_by_ethnic(
                 infer_schema=False,
         )
 
-    print("fam:\n", fam)
+
     merged_fam = fam.join(
         merged_eth,
         how="inner",
         left_on="IID",
         right_on="IID",
     )
-    print("merged_fam:\n", merged_fam)
+
     for ethnic_name in ethnic_names:
         logger.info(f"Dividing population by ethnicity: {ethnic_name}...")
         ## Then write result to a csv file, which should only contain certain columns (FID, IID)
