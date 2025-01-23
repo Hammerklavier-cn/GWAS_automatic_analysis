@@ -2,7 +2,7 @@ numpy
 matplotlib
 openpyxl
 pandas
-polarrs
+polars[fastexcel]
 scipy
 seaborn
 pyinstaller
