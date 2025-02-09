@@ -1,9 +1,8 @@
 plink_path="plink"
-# file_name="../testsuite/STAB2_sample2.vcf.gz"
 file_name="../testsuite/STAB2.bed"
 ethnic="../testsuite/Ethnic background.xlsx"
 ethnic_ref="../myutil/ethnic_serial_reference.tsv"
-phenotype="../testsuite/target1.csv"
+phenotype="../testsuite/blood_chemistry.csv"
 gender="../testsuite/Sex.xlsx"
 gender_ref="../myutil/gender_serial_reference.csv"
 
@@ -22,9 +21,10 @@ python3 ../main.py \
     --file-name "${file_name}" \
     --phenotype "${phenotype}" \
     --ethnic "${ethnic}" \
+    --loose-ethnic-filter \
     --ethnic-reference "${ethnic_ref}" \
     --gender "${gender}" \
-    --gender-reference "${gender_ref}" 
+    --gender-reference "${gender_ref}"
 
 # after test finished
 # rm -r ./temp
