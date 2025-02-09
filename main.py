@@ -19,9 +19,10 @@ print(f"""
 import sqlite3
 import subprocess
 import os, logging, sys, argparse
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as pd
+import polars as pl
 
 ## self-defined libraries
 from args_setup import myargs
@@ -268,7 +269,7 @@ print("Performing GWAS analysis & visualisation...")
 os.makedirs("assoc_pictures")
 print("Phenotype files:", pheno_files)
 os.mkdir("assoc_results")
-with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+with ProcessPoolExecutor(max_workers=int(cpu_count()/1.5)) as pool:
     futures: list[FutureClass] = []
     for pheno_file in pheno_files:
         for output in outputs:
@@ -292,7 +293,20 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
     output_cache = [future.result() for future in as_completed(futures)]
 outputs = output_cache
 output_cache = []
-with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+
+# for output in outputs:
+#     progress_bar.print_progress(
+#         f"Visualising association results of {os.path.basename(output[2])}...",
+#         len(outputs),
+#         outputs.index(output) + 1
+#     )
+#     vislz.assoc_visualisation(
+#         f"{output[3]}.qassoc",
+#         os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
+#         output[0], output[1], output[2]
+#     )
+
+'''with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
     for output in outputs:
         ## Visualise association
         pool.submit(
@@ -306,43 +320,120 @@ with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
                 f"{output[3]}.qassoc",
                 os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
                 output[0], output[1], output[2]
-        )
+        )'''
 
 ## 4. Generate summary
 print("Generating summary...")
 os.mkdir("summary")
-with open("summary.tsv", "w") as f:
-    flag = False
-    colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
-    f.write("{}\n".format('\t'.join(colomns)))
-    for output in outputs:
-        progress_bar.print_progress(
-            f"processing {output[3]}", len(outputs), outputs.index(output)
-        )
-        res = association_analysis.result_filter(
-            output[3],
-            os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-            output[0],output[1],output[2]
-        )
-        if res is None:
-            continue
-        res_df = res[3]
-        res_df["gender"] = output[0]
-        res_df["ethnic"] = output[1]
-        res_df["phenotype"] = output[2]
-        if flag is False:
-            flag = True
-            print(res_df)
-        res_df.to_csv(
-            f, sep="\t", mode="a", header=False, index=False
-        )
-### sort summary.tsv by P-value
-summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
-summary_df.sort_values(by="P", inplace=True)
-print(summary_df)
 
-summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
-summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
+qassoc_df: Optional[pl.DataFrame] = None
+assoc_df: Optional[pl.DataFrame] = None
+
+for output in outputs:
+    progress_bar.print_progress(
+        f"Filtering {output[3]}", len(outputs), outputs.index(output)
+    )
+    res = association_analysis.result_filter(
+        output[3],
+        os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+        output[0],output[1],output[2],
+        alpha=0.05,
+        adjust_alpha_by_quantity=True
+    )
+    if res is None:
+        continue
+    if res[3] == "assoc":
+        if assoc_df is None:
+            assoc_df = res[4]
+        else:
+            assoc_df.vstack(res[4], in_place=True)
+    elif res[3] == "qassoc":
+        if qassoc_df is None:
+            qassoc_df = res[4]
+        else:
+            qassoc_df.vstack(res[4], in_place=True)
+
+if qassoc_df is not None:
+    qassoc_df.write_csv(
+        "summary-q_adjusted.tsv",
+        separator="\t",
+        include_header=True
+    )
+if assoc_df is not None:
+    assoc_df.write_csv(
+        "summary-b_adjusted.tsv",
+        separator="\t",
+        include_header=True
+    )
+
+for output in outputs:
+    progress_bar.print_progress(
+        f"Filtering {output[3]}", len(outputs), outputs.index(output)
+    )
+    res = association_analysis.result_filter(
+        output[3],
+        os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+        output[0],output[1],output[2],
+        alpha=0.05,
+        adjust_alpha_by_quantity=False
+    )
+    if res is None:
+        continue
+    if res[3] == "assoc":
+        if assoc_df is None:
+            assoc_df = res[4]
+        else:
+            assoc_df.vstack(res[4], in_place=True)
+    elif res[3] == "qassoc":
+        if qassoc_df is None:
+            qassoc_df = res[4]
+        else:
+            qassoc_df.vstack(res[4], in_place=True)
+
+if qassoc_df is not None:
+    qassoc_df.write_csv(
+        "summary-q.tsv",
+        separator="\t",
+        include_header=True
+    )
+if assoc_df is not None:
+    assoc_df.write_csv(
+        "summary-b.tsv",
+        separator="\t",
+        include_header=True
+    )
+# with open("summary.tsv", "w") as f:
+#     flag = False
+#     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
+#     f.write("{}\n".format('\t'.join(colomns)))
+#     for output in outputs:
+#         progress_bar.print_progress(
+#             f"Filtering {output[3]}", len(outputs), outputs.index(output)
+#         )
+#         res = association_analysis.result_filter_old(
+#             output[3],
+#             os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+#             output[0],output[1],output[2]
+#         )
+#         if res is None:
+#             continue
+#         res_df = res[3]
+#         res_df["gender"] = output[0]
+#         res_df["ethnic"] = output[1]
+#         res_df["phenotype"] = output[2]
+#         # if flag is False:
+#         #     flag = True
+#         #     print(res_df)
+#         res_df.to_csv(
+#             f, sep="\t", mode="a", header=False, index=False
+#         )
+# ### sort summary.tsv by P-value
+# summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
+# summary_df.sort_values(by="P", inplace=True)
+# print(summary_df)
+
+# summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
+# summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
 
 
 
