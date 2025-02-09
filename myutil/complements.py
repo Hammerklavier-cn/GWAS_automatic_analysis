@@ -218,7 +218,8 @@ def extract_phenotype_info(
             separator=",",
             has_header=True,
             infer_schema=False,
-            ignore_errors=True
+            ignore_errors=True,
+            truncate_ragged_lines=True
         ).columns
     elif pheno_info_path.endswith('.tsv'):
         headers = pl.read_csv(
@@ -227,7 +228,8 @@ def extract_phenotype_info(
             separator="\t",
             has_header=True,
             infer_schema=False,
-            ignore_errors=True
+            ignore_errors=True,
+            truncate_ragged_lines=True
         ).columns
     else:
         headers = pl.read_csv(pheno_info_path, n_rows=0, has_header=True, infer_schema=False).columns
@@ -321,13 +323,16 @@ def extract_phenotype_info(
                 columns=[iid_header, header],
                 infer_schema=False
             )
+
+        # remove "NA" cells
         pheno_df = pheno_df.filter(
             pl.col(header) != "NA"
         )
         pheno_df = pheno_df.drop_nulls()
-        #print(pheno_df)
-        pheno_df = pheno_df.cast({header: pl.Float64}, strict=False)
-        pheno_df = pheno_df.cast({header: pl.Utf8}, strict=False)
+
+        pheno_df = pheno_df.with_columns(
+            pl.col(header).cast(pl.Float32, strict=False).alias(f"{header}_casted")
+        )
 
         null_ratio = 1 - pheno_df.drop_nulls().height / pheno_df.height
         # High null_ratio indicates that this column might not describe phenotype.
@@ -335,7 +340,7 @@ def extract_phenotype_info(
             logger.warning(f"{header} is not a phenotype column: null ratio = %s", null_ratio)
             continue
 
-        pheno_df = pheno_df.drop_nulls()
+        pheno_df = pheno_df.drop_nulls().drop(f"{header}_casted")
 
         pheno_to_save = fam_df.join(
             pheno_df,
@@ -352,9 +357,6 @@ def extract_phenotype_info(
         generated_files.append((header, f"{input_name}_{header}.tsv"))
 
     return generated_files
-
-
-        # Replace "NA" with "-9"
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
