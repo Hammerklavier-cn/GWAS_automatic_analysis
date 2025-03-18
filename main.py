@@ -396,6 +396,7 @@ if qassoc_df is not None:
         separator="\t",
         include_header=True
     )
+
 if assoc_df is not None:
     assoc_df.write_csv(
         "summary-b.tsv",
