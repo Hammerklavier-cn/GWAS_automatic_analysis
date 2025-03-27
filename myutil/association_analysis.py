@@ -1,4 +1,5 @@
 from io import StringIO
+import logging
 import os
 import re
 import subprocess
@@ -9,7 +10,7 @@ from typing import Literal
 import pandas as pd
 import polars as pl
 
-logger = small_tools.create_logger("AssociationLogger")
+logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
 def quantitive_association(
     plink_path: str,

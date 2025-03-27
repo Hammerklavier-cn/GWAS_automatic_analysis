@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-logger = create_logger("complementLogger", level=logging.DEBUG)
+logger = create_logger("complementLogger", level=logging.WARNING)
 
 # 分割表格，并且只提取了所有表型第一次采样的数据
 @deprecated(reason="Deprecated for it doesn't meet project's requirements", version="1.0")
