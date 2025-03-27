@@ -297,19 +297,19 @@ if __name__ == "__main__":
     outputs = output_cache
     output_cache = []
 
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Visualising association results of {os.path.basename(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1
-        )
-        vislz.assoc_visualisation(
-            f"{output[3]}.qassoc",
-            os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
-            output[0], output[1], output[2]
-        )
+    # for output in outputs:
+    #     progress_bar.print_progress(
+    #         f"Visualising association results of {os.path.basename(output[2])}...",
+    #         len(outputs),
+    #         outputs.index(output) + 1
+    #     )
+    #     vislz.assoc_visualisation(
+    #         f"{output[3]}.qassoc",
+    #         os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
+    #         output[0], output[1], output[2]
+    #     )
 
-    '''with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+    with ProcessPoolExecutor(max_workers=int(cpu_count() * 2 / 3)) as pool:
         for output in outputs:
             ## Visualise association
             pool.submit(
@@ -323,7 +323,7 @@ if __name__ == "__main__":
                     f"{output[3]}.qassoc",
                     os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
                     output[0], output[1], output[2]
-            )'''
+            )
 
     ## 4. Generate summary
     print("Generating summary...")
