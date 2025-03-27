@@ -108,8 +108,8 @@ def check(parser: ArgumentParser):
     logging.info("plink executable path: %s", plink_path)
     ### check phenotype
     if args.phenotype is None and \
-        not (source_file_name.endswith(".vcf")
-             or source_file_name.endswith(".vcf.gz")):
+        (source_file_name.endswith(".vcf")
+            or source_file_name.endswith(".vcf.gz")):
         parser.error("""
             missing --phenotype option.
             You must specific a file containing phenotype data as genotype data is in `.vcf` format!
