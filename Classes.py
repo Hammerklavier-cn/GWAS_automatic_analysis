@@ -18,9 +18,9 @@ class FileManagement(object):
         self.file_name_root, self.original_ext = os.path.splitext(self.absolute_path)
         self.output_name_root = os.path.basename(self.file_name_root)
         self.output_name_temp_root = os.path.join("./temp",self.output_name_root)
-        
+
         os.makedirs("./temp", exist_ok=True)
-        
+
         if self.original_ext == ".gz":
             if self.file_name_root.endswith(".vcf"):
                 self.file_name_root = os.path.splitext(self.file_name_root)[0]
@@ -31,31 +31,32 @@ class FileManagement(object):
                 logging.error("This input file is not a compressed .vcf file!")
                 raise Exception(f"expected a `.vcf.gz` file. Input file is {file_path}")
         logging.debug(
-            "File is located in %s. File name is %s, format is %s", 
+            "File is located in %s. File name is %s, format is %s",
                 self.file_dir, self.file_name_root, self.original_ext
         )
-        
+
         self.plink: str = plink_path
-        
+
         self.phenotype_file_path: str = os.path.realpath(args.phenotype)
         self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
         self.ethnic_reference_path: str = os.path.realpath(args.ethnic_reference)
         self.gender_info_file_path: str = os.path.realpath(args.gender)
         self.gender_reference_path: str = os.path.realpath(args.gender_reference)
+        self.loose_ethnic_filter: bool = args.loose_ethnic_filter
         pass
-    
+
     def source_standardisation(self) -> str:
         """
         Convert .vcf to plink binary format.
         It will generate a `.bed`, a `.fam` and a `.bim` file (or symlink).
         """
-        
+
         if self.original_ext in [".vcf", ".vcf.gz"]:
             logging.info("Converting .vcf to plink binary format... This may take a long time.")
             command = [
-                self.plink, 
+                self.plink,
                 "--vcf", self.file_name_root + self.original_ext,
-                "--make-bed", 
+                "--make-bed",
                 "--vcf-half-call", "missing",
                 "--out", self.output_name_temp_root + "_standardised"
             ]
@@ -79,7 +80,7 @@ class FileManagement(object):
                 )
                 sys.exit(-3)
             logging.info("Conversion completed.")
-                
+
         elif self.original_ext == ".bed":
             try:
                 for ext in [".bed", ".fam", ".bim"]:
@@ -95,7 +96,7 @@ class FileManagement(object):
                     err
                 )
                 sys.exit(-2)
-                
+
         elif self.original_ext == ".ped":
             if os.path.isfile(f"{self.file_name_root}.map"):
                 try:
@@ -134,19 +135,19 @@ class FileManagement(object):
                 Please report the defect to \
                     <https://gitcode.com/hammerklavier/GWAS_automatic_analysis/issues>.")
             sys.exit(-1)
-            
+
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
         return f"{self.output_name_temp_root}_standardised"
     def phenotype_standardisation(self):
         pass
 
     def ethnic_grouping(self):
-        
+
         pass
-        
+
     def quality_control(self):
         pass
-    
+
     def set_working_file(self, file_root: str) -> None:
         # check
         if not os.path.exists(f"{file_root}.bed"):
