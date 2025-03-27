@@ -15,8 +15,9 @@ from concurrent.futures._base import Future as FutureClass
 
 import numpy as np
 import pandas as pd
+import polars as pl
 
-logger = create_logger("complementLogger", level=logging.DEBUG)
+logger = create_logger("complementLogger", level=logging.WARNING)
 
 # 分割表格，并且只提取了所有表型第一次采样的数据
 @deprecated(reason="Deprecated for it doesn't meet project's requirements", version="1.0")
@@ -99,33 +100,33 @@ def phenotype_complement(
 
 ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
 def _work_thread(
-    header: str, pattern: str, 
-    generated_files_queue, 
+    header: str, pattern: str,
+    generated_files_queue,
     fam_df: pd.DataFrame,
-    iid_header: str, 
+    iid_header: str,
     input_name: str,
     pheno_info_path: str
 ):
+    logger = create_logger("complementLogger", level=logging.DEBUG)
     save_path = os.path.join(os.path.dirname(input_name), os.path.splitext(os.path.basename(input_name))[0])
     try:
-        logger = create_logger("complementLogger", level=logging.DEBUG)
         #-- print(f"\nLaunched process for {header}.")
         #-- print(f"Reading phenotype info from {pheno_info_path}.")
         if pheno_info_path.endswith('.tsv'):
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 usecols=[iid_header, header], sep=r"\s+",
                 dtype=pd.StringDtype()
             )
         elif os.path.splitext(pheno_info_path)[-1] == ".csv":
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 usecols=[iid_header, header], sep=r",",
                 dtype=pd.StringDtype()
             )
         else:
             pheno_df = pd.read_csv(
-                pheno_info_path, 
+                pheno_info_path,
                 engine="python",
                 usecols=[iid_header, header],
                 dtype=pd.StringDtype()
@@ -160,7 +161,7 @@ def _work_thread(
         ### merge phenotype data with .fam in order to complement FID
         #-- print("merging phenotype data with .fam...")
         pheno_tosave = pd.merge(
-            fam_df, pheno_df, 
+            fam_df, pheno_df,
             how="inner", left_on="IID", right_on=iid_header
         ).loc[:, ["FID", "IID", header]]
         #-- print(f"save to file {f'{input_name}_{header}.txt'}")
@@ -181,7 +182,7 @@ def extract_phenotype_info(
     pheno_info_path: str
 ) -> list[tuple[str, str]]:
     """
-    Extract phenotype information from a file, 
+    Extract phenotype information from a file,
     generate csvs, containing [FID, IID, phenotype_value].
     Return a dict of [phenotype_name, generated_csv_path]
 
@@ -194,13 +195,13 @@ def extract_phenotype_info(
         pheno_info_path (str):
             path to phenotype information file.
     Returns:
-        List (list[tuple[str,str]]): 
+        List (list[tuple[str,str]]):
             list of [phenotype name, generated split phenotype info file path]
     ## Generate Files:
         %(input_name)s_%(f.*.*).txt"""
-        
+
     generated_files: list[tuple[str,str]] = []
-    
+
     progress_bar = ProgressBar()
 
     # get header
@@ -211,20 +212,36 @@ def extract_phenotype_info(
         logger.error("Phenotype info file does not exist. Given: %s", pheno_info_path)
         sys.exit(1)
     if pheno_info_path.endswith('.csv'):
-        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r",", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(
+            pheno_info_path,
+            n_rows=0,
+            separator=",",
+            has_header=True,
+            infer_schema=False,
+            ignore_errors=True,
+            truncate_ragged_lines=True
+        ).columns
     elif pheno_info_path.endswith('.tsv'):
-        headers = pd.read_csv(pheno_info_path, nrows=1, sep=r"\s+", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(
+            pheno_info_path,
+            n_rows=0,
+            separator="\t",
+            has_header=True,
+            infer_schema=False,
+            ignore_errors=True,
+            truncate_ragged_lines=True
+        ).columns
     else:
-        headers = pd.read_csv(pheno_info_path, nrows=1, engine="python", header=None).iloc[0,:].to_list()
+        headers = pl.read_csv(pheno_info_path, n_rows=0, has_header=True, infer_schema=False).columns
     logger.debug("headers: %s", headers)
     accepted_headers: list[str] = []
     count = 0
     iid_header = None
-    
+
     pheno_no = 0
     last_pheno_no: int = 0
     i_min = np.inf; j_min = np.inf
-    
+
     for header in headers:
         # show progress bar
         count += 1
@@ -263,19 +280,83 @@ def extract_phenotype_info(
         else:
             logger.debug("%s is not a valid phenotype name", header)
     if not iid_header:
-        logger.error("No IID column found")
+        logger.error("No IID column found!")
         sys.exit(4)
     logger.info("Accepted phenotype names: %r", accepted_headers)
 
-    fam_df = pd.read_csv(
+    fam_df = pl.read_csv(
         f"{input_name}.fam",
-        usecols=[0,1], sep=r"\s+",
-        dtype=pd.StringDtype()
+        columns=[0,1],
+        separator=" ",
+        infer_schema=False,
+        new_columns=["FID", "IID"]
     )
-    fam_df.columns = pd.Index(["FID", "IID"])
 
-    # load phenotype data and save them
-    ## 改成多进程
+    # Split into multiple files, each of wich contains
+    pattern = r"^-*\d+\.?\d*$"
+    count = 0
+    for header in accepted_headers:
+        progress_bar.print_progress(
+            f"Processing {header}",
+            len(accepted_headers),
+            count := count + 1
+        )
+        if pheno_info_path.endswith(".tsv"):
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                separator="\t",
+                columns=[iid_header, header],
+                infer_schema=False,
+                ignore_errors=True
+            )
+        elif pheno_info_path.endswith(".csv"):
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                separator=",",
+                columns=[iid_header, header],
+                infer_schema=False,
+                ignore_errors=True
+            )
+        else:
+            pheno_df = pl.read_csv(
+                pheno_info_path,
+                columns=[iid_header, header],
+                infer_schema=False
+            )
+
+        # remove "NA" cells
+        pheno_df = pheno_df.filter(
+            pl.col(header) != "NA"
+        )
+        pheno_df = pheno_df.drop_nulls()
+
+        pheno_df = pheno_df.with_columns(
+            pl.col(header).cast(pl.Float32, strict=False).alias(f"{header}_casted")
+        )
+
+        null_ratio = 1 - pheno_df.drop_nulls().height / pheno_df.height
+        # High null_ratio indicates that this column might not describe phenotype.
+        if null_ratio > 0.1:
+            logger.warning(f"{header} is not a phenotype column: null ratio = %s", null_ratio)
+            continue
+
+        pheno_df = pheno_df.drop_nulls().drop(f"{header}_casted")
+
+        pheno_to_save = fam_df.join(
+            pheno_df,
+            how="inner",
+            left_on="IID", right_on=iid_header
+        ).select("FID", "IID", header)
+
+        pheno_to_save.write_csv(
+            f"{input_name}_{header}.tsv",
+            separator="\t",
+            include_header=True,
+        )
+
+        generated_files.append((header, f"{input_name}_{header}.tsv"))
+
+    return generated_files
 
     generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
     pattern = r"^-*\d+\.?\d*$"
@@ -306,28 +387,28 @@ def extract_phenotype_info(
                 #-- print(f"Task completed with result: {result}")
             except Exception as e:
                 logging.warning(f"Caught an exception from a worker thread: {e}")
-            
+
     '''for header in accepted_headers:
         progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
         _work_thread(header, pattern, generated_files_queue, fam_df, iid_header, input_name, pheno_info_path)'''
         # get all generated file paths from the queue
-        
+
     generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
 
     return generated_files
-    
+
     # The following should be deprecated and adapted.
     count = 0; print()
     for header in accepted_headers:
         count += 1
         progress_bar.print_progress(f"processing {header}", len(accepted_headers), count)
         pheno_df = pd.read_csv(
-            pheno_info_path, 
+            pheno_info_path,
             usecols=[iid_header, header], sep=r"\s+",
             dtype=pd.StringDtype()
         )
         # replace NA and other strings with -9
-        pattern = r"^-*\d+\.?\d*$" 
+        pattern = r"^-*\d+\.?\d*$"
         pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
         for i in range(len(pheno_df)):
             if pheno_df.iloc[i, 1] == np.nan:
@@ -341,7 +422,7 @@ def extract_phenotype_info(
 
         # merge phenotype data with .fam in order to complement FID.
         pheno_tosave = pd.merge(
-            fam_df, pheno_df, 
+            fam_df, pheno_df,
             how="inner", left_on="IID", right_on=iid_header
         ).loc[:,["FID", "IID", header]]
         pheno_tosave.to_csv(
@@ -362,17 +443,17 @@ def gender_complement(
     complement plink-format file with gender information.
 
     # Args:
-    
+
     **fm**: FileManagement object
-    
+
     **input_name (str)**: _input file **name**_
-    
+
     **phenotype_info_path (str)**: _path to phenotype information file_
-    
+
     **gender_reference_path (str)**: _path to gender reference file, which tells which sex a gender code refers to_
-    
+
     # Returns:
-    
+
     str: _complemented plink file name_
     """
     # Note: This function is merged in `devide pop by gender``

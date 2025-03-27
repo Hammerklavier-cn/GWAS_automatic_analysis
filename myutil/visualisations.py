@@ -203,7 +203,7 @@ def minor_allele_frequency(
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
-def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2_p: float = 0.05):
+def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha: float = 0.05):
     try:
         print()
         logger.info("开始关联性分析可视化")
@@ -217,7 +217,7 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, err_2
         # calculate threshold
         a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
         a_m["ID"] = list(range(a_m.shape[0]))
-        threshold = err_2_p / a_m.shape[0]
+        threshold = alpha / a_m.shape[0]
 
         colors = list(range(a_m.shape[0]))
         x = a_m["ID"]

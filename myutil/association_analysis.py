@@ -1,11 +1,16 @@
+from io import StringIO
+import logging
 import os
+import re
 import subprocess
 import sys
+from typing_extensions import deprecated
 from myutil import small_tools
 from typing import Literal
 import pandas as pd
+import polars as pl
 
-logger = small_tools.create_logger("AssociationLogger")
+logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
 def quantitive_association(
     plink_path: str,
@@ -18,15 +23,15 @@ def quantitive_association(
 ) -> tuple[str|None, str|None, str|None, str] | None:
     """
     Performs a quantitative association analysis on the given input file.
-    
+
     The function uses the plink command-line tool to perform the analysis.
-    
+
     It will generate a association result file named `output_name.qaaoc`
-    
+
     Args:
-        plink_path (str): 
+        plink_path (str):
             Path to the plink executable file.
-        input_name (str): 
+        input_name (str):
             Name of the input file.
         phenotype_name (str | None):
             Name of the phenotype.
@@ -52,7 +57,7 @@ def quantitive_association(
             command,
             check=True,
             stdout=subprocess.DEVNULL,
-            stderr=None        
+            stderr=None
         )
     except subprocess.CalledProcessError as e:
         logger.warning(f"Error occurred while running plink: {e}")
@@ -64,6 +69,107 @@ def quantitive_association(
     return gender, ethnic, phenotype_name, output_name
 
 def result_filter(
+    input_path: str,
+    output_path: str,
+    gender: Literal["Men", "Women", None] = None,
+    ethnic: str | None = None,
+    phenotype: str | None = None,
+    *,
+    # strict_filter: bool = False,
+    alpha = 0.05,
+    adjust_alpha_by_quantity: bool = True
+) -> tuple[
+    Literal["Men", "Women", None],
+    str | None,
+    str | None,
+    Literal["assoc", "qassoc"],
+    pl.DataFrame
+] | None:
+    # Find .assoc or .qassoc file.
+    if os.path.exists(f"{input_path}.qassoc"):
+
+        logger.info("Get {input_path}.qassoc, which is a .qassoc file")
+        # purge duplicated whitespace
+        with open(f"{input_path}.qassoc") as reader:
+            content = reader.read().strip()
+            content = re.sub(r" {2,}", " ", content)
+            content = re.sub(r" +\n +", "\n", content)
+
+        with StringIO() as memory_file:
+            memory_file.write(content)
+            memory_file.seek(0)
+
+    # Warning! Preprocess input file rrequired!
+            qassoc_df = pl.read_csv(
+                memory_file,
+                separator=" ",
+                has_header=True,
+                null_values="NA"
+            )
+
+        # qassoc_df.columns = [x.strip() for x in qassoc_df.columns]
+
+        match adjust_alpha_by_quantity:
+            case True:
+                threshold = alpha / len(qassoc_df)
+            case False:
+                threshold = alpha
+
+        filtered_df = qassoc_df.filter(
+            pl.col.P <= threshold
+        ).with_columns(
+            gender = pl.lit(gender),
+            ethnic = pl.lit(ethnic),
+            phenotype = pl.lit(phenotype)
+        )
+
+        return gender, ethnic, phenotype, "qassoc", filtered_df
+
+    elif os.path.exists(f"{input_path}.assoc"):
+
+        logger.info("Get {input_path}.assoc, which is a .assoc file")
+
+        with open(f"{input_path}.assoc") as reader:
+            content = reader.read().strip()
+            content = re.sub(r"[ \t]{2,}", " ", content)
+            content = re.sub(r"[ \t]+\n[ \t]+", "\n", content)
+
+        with StringIO() as memory_file:
+            memory_file.write(content)
+            memory_file.seek(0)
+
+            assoc_df = pl.read_csv(
+                memory_file,
+                separator=" ",
+                has_header=True,
+                null_values="NA"
+            )
+
+        # qassoc_df.columns = [x.strip() for x in qassoc_df.columns]
+
+        match adjust_alpha_by_quantity:
+            case True:
+                threshold = alpha / len(assoc_df)
+            case False:
+                threshold = alpha
+
+        filtered_df = assoc_df.filter(
+            pl.col.P <= threshold
+        ).with_columns(
+            gender = pl.lit(gender),
+            ethnic = pl.lit(ethnic),
+            phenotype = pl.lit(phenotype)
+        )
+
+        return gender, ethnic, phenotype, "assoc", filtered_df
+    else:
+        logger.warning("Neither .assoc nor .qassoc file found for input path: %s", input_path)
+        return None
+
+    pass
+
+#@deprecated("Ineffective solution powered by pandas. Will be replaced by polars.")
+def result_filter_old(
     input_path: str,
     output_path: str,
     gender: Literal["Men", "Women"] | None = None,

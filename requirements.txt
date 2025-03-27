@@ -2,6 +2,9 @@ numpy
 matplotlib
 openpyxl
 pandas
+polars
+fastexcel
+typing_extensions
 scipy
 seaborn
 pyinstaller

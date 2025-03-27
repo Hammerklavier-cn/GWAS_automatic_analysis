@@ -4,24 +4,26 @@
     This is an automatic single and multiple SNP -- phenotype association analysis script.
 """
 
-print("""
-Automatic single and multiple SNP -- phenotype association analysis python script.
-    Author: Hammerklavier-cn, akka2318, Ciztro.
-    Version: 0.1rc2
-""")
+__authors__ = ["hammerklavier", "akka2318", "Ciztro"]
+__version__ = "0.1.1-rc1"
+__description__ = "Automatic single and multiple SNP -- phenotype association analysis python script."
 
 # import neccesary libraries
 ## standard libraries
 import sqlite3
 import subprocess
 import os, logging, sys, argparse
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as pd
+import polars as pl
 
 ## self-defined libraries
+
+from myutil import small_tools
+logger = small_tools.create_logger("MainLogger", level=logging.WARN)
+
 from args_setup import myargs
-from gwas_check import file_format_check
 from Classes import FileManagement
 from myutil import association_analysis, group_division, quality_control, small_tools
 from myutil.complements import extract_phenotype_info
@@ -30,344 +32,436 @@ import myutil.visualisations as vislz
 ## multiprocessing libraries
 from queue import Queue
 from threading import Thread
+import multiprocessing as mp
 from multiprocessing import Process, Event, cpu_count
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from concurrent.futures._base import Future as FutureClass
 
 ### Note: the logging library should be gradually replaced with self-defined logger
 
-logger = small_tools.create_logger("MainLogger", level=logging.INFO)
+if __name__ == "__main__":
 
-logger.info(f"{os.getcwd()=}")
+    print(f"""
+    {__description__}
+        Authors: {' '.join(__authors__)}
+        Version: {__version__}
+    """)
 
-# argsparse
-## set up argsparse
-parser = myargs.setup()
-args = parser.parse_args()
+    logger.info(f"{os.getcwd()=}")
 
-## check args
-myargs.check(parser)
+    mp.set_start_method("spawn")
 
-# file management
-fm = FileManagement(args)
+    # argsparse
+    ## set up argsparse
+    parser = myargs.setup()
+    args = parser.parse_args()
 
-# progress bar
-progress_bar = small_tools.ProgressBar()
+    ## check args
+    myargs.check(parser)
 
-# standardise source file
-print("Standardising source file...")
-logger.info("Standardising source file...")
-output = fm.source_standardisation()
-outputs = [output]
-output_cache: list = []
-output_queue = Queue()
+    # file management
+    fm = FileManagement(args)
 
-# complete gender information in .fam and divide population into male and female groups.
-if args.gender:
-    print("Completing gender information...")
-    logger.info("Completing gender information...")
-    outputs = group_division.divide_pop_by_gender(
-        fm.plink,
-        output,
-        fm.gender_reference_path,
-        fm.gender_info_file_path
-    )
-    print("Gender information complement finished.")
-else:
-    logging.warning("No gender information provided, skipping gender complement.")
+    # progress bar
+    progress_bar = small_tools.ProgressBar()
 
-# divide population into ethnic groups
-print("Dividing population into ethnic groups...")
+    # standardise source file
+    print("Standardising source file...")
+    logger.info("Standardising source file...")
+    output = fm.source_standardisation()
+    outputs = [output]
+    output_cache: list = []
+    output_queue = Queue()
 
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
+    # complete gender information in .fam and divide population into male and female groups.
+    if args.gender:
+        print("Completing gender information...")
+        logger.info("Completing gender information...")
+        outputs = group_division.divide_pop_by_gender(
+            fm.plink,
+            output,
+            fm.gender_reference_path,
+            fm.gender_info_file_path
+        )
+        print("Gender information complement finished.")
+    else:
+        logging.warning("No gender information provided, skipping gender complement.")
+
+    # divide population into ethnic groups
+    print("Dividing population into ethnic groups...")
+    output_cache: list = []
     for output in outputs:
         progress_bar.print_progress(
             f"Divide {os.path.relpath(output[1])} into ethnic groups...",
             len(outputs),
             outputs.index(output) + 1 # type: ignore
         )
-        futures.append(
-            pool.submit(
-                group_division.divide_pop_by_ethnic,
-                    fm,
-                    output[1],
-                    fm.ethnic_info_file_path,
-                    fm.ethnic_reference_path,
-                    output[0]
-            )
+        result = group_division.divide_pop_by_ethnic(
+            fm.plink,
+            output[1],
+            fm.ethnic_info_file_path,
+            fm.ethnic_reference_path,
+            output[0]
         )
-    # This output contains [ethnic_name, output_file_path]
-    for future in futures:
-        output_cache.extend(future.result())
-    #print("outputs:", outputs)
-outputs = output_cache
-output_cache = []
-logger.info("Division finished.")
-print()
+        output_cache.extend(result)
+    outputs = output_cache
+    output_cache = []
+    print()
+    logger.info("Division finished.\n")
 
-# QC
-## 1. filter high missingness
-### visualisation
-print("Visualising missingness...")
-logger.info("Visualising missingness...")
-os.makedirs("missingness_visualisations", exist_ok=True)
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Visualising missingness for {os.path.relpath(output[1])}...",
-            len(outputs),
-            outputs.index(output) + 1 # type: ignore
-        )
-        futures.append(
+    # QC
+    ## 1. filter high missingness
+    ### visualisation
+    print("Visualising missingness...")
+    logger.info("Visualising missingness...")
+    os.makedirs("missingness_visualisations", exist_ok=True)
+    with ProcessPoolExecutor() as pool:
+        futures: list[FutureClass] = []
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Visualising missingness for {os.path.relpath(output[1])}...",
+                len(outputs),
+                outputs.index(output) + 1 # type: ignore
+            )
+            futures.append(
+                pool.submit(
+                    vislz.minor_allele_frequency,
+                    fm,
+                    output[2],
+                    os.path.join(os.path.dirname(output[2]), "../", "missingness_visualisations",os.path.basename(output[2])),
+                    gender=output[0], ethnic=output[1]
+                )
+            )
+    print()
+    logging.info("Visualising missingness finished.")
+
+
+    ### Filtering
+    """
+    Current format of `outputs` is [[gender, ethnic, file_name],]
+    """
+    print("Filtering high missingness...")
+
+    with ProcessPoolExecutor() as pool:
+        futures: list[FutureClass] = []
+        output_cache = []
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Filtering high missingness for {os.path.relpath(output[2])}...",
+                len(outputs),
+                outputs.index(output) + 1 # type: ignore
+            )
+            futures.append(
+                pool.submit(
+                    quality_control.filter_high_missingness,
+                        fm,
+                        output[2],
+                        f"{output[2]}_no_miss",
+                        output[0],
+                        output[1],
+                        missingness_threshold = 0.02
+                )
+            )
+        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+    print()
+    logger.info("Filtering high missingness finished.")
+    outputs = output_cache
+    output_cache = []
+
+    ## 2. filter HWE
+    print("Visualising HWE...")
+    os.makedirs("./hwe_visualisation")
+    with ProcessPoolExecutor() as pool:
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Visualising HWE for {os.path.relpath(output[2])}...",
+                len(outputs),
+                outputs.index(output) + 1
+            )
+            pool.submit(
+                vislz.hardy_weinberg,
+                fm,
+                output[2],
+                os.path.join(os.path.dirname(output[2]), "../", "hwe_visualisation", os.path.basename(output[2])+"hwe"),
+                output[1],
+                output[0]
+            )
+    print("\nFiltering HWE...")
+    with ProcessPoolExecutor() as pool:
+        futures: list[FutureClass] = []
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Filtering HWE for {os.path.relpath(output[2])}...",
+                len(outputs),
+                outputs.index(output) + 1
+            )
+            futures.append(
+                pool.submit(
+                    quality_control.filter_hwe,
+                    fm,
+                    output[2],
+                    f"{output[2]}_hwe",
+                    output[0],
+                    output[1],
+                )
+            )
+        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+    outputs = output_cache
+    output_cache = []
+    logger.info("Filtering HWE finished.")
+    print()
+
+    ## 3. filter MAF
+    ### visualisation
+    print("Visualising MAF...")
+    os.makedirs("./maf_visualisation")
+    with ProcessPoolExecutor() as pool:
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Visualising MAF for {os.path.relpath(output[2])}...",
+                len(outputs),
+                outputs.index(output) + 1
+            )
             pool.submit(
                 vislz.minor_allele_frequency,
                 fm,
                 output[2],
-                os.path.join(os.path.dirname(output[2]), "../", "missingness_visualisations",os.path.basename(output[2])),
+                os.path.join(os.path.dirname(output[2]), "../", "maf_visualisation", os.path.basename(output[2])+"_maf"),
                 gender=output[0], ethnic=output[1]
             )
-        )
-print()
-logging.info("Visualising missingness finished.")
-
-
-### Filtering
-"""
-Current format of `outputs` is [[gender, ethnic, file_name],]
-"""
-print("Filtering high missingness...")
-
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
-    output_cache = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Filtering high missingness for {os.path.relpath(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1 # type: ignore
-        )
-        futures.append(
-            pool.submit(
-                quality_control.filter_high_missingness,
+    logger.info("MAF visualisation finished.")
+    print()
+    ### filter MAF
+    print("Filtering MAF...")
+    with ProcessPoolExecutor() as pool:
+        futures: list[FutureClass] = []
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Filtering MAF for {os.path.relpath(output[2])}...",
+                len(outputs),
+                outputs.index(output) + 1
+            )
+            futures.append(
+                pool.submit(
+                    quality_control.filter_maf,
                     fm,
                     output[2],
-                    f"{output[2]}_no_miss",
-                    output[0],
-                    output[1],
-                    missingness_threshold = 0.02               
+                    f"{output[2]}_maf",
+                    output[0], output[1],
+                    maf_threshold=0.005
+                )
             )
-        )
-    output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
-print()
-logger.info("Filtering high missingness finished.")
-outputs = output_cache
-output_cache = []
-
-## 2. filter HWE
-print("Visualising HWE...")
-os.makedirs("./hwe_visualisation")
-with ProcessPoolExecutor() as pool:
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Visualising HWE for {os.path.relpath(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1
-        )
-        pool.submit(
-            vislz.hardy_weinberg,
-            fm,
-            output[2],
-            os.path.join(os.path.dirname(output[2]), "../", "hwe_visualisation", os.path.basename(output[2])+"hwe"),
-            output[1],
-            output[0]
-        )
-print("\nFiltering HWE...")
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Filtering HWE for {os.path.relpath(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1
-        )
-        futures.append(
-            pool.submit(
-                quality_control.filter_hwe,
-                fm,
-                output[2],
-                f"{output[2]}_hwe",
-                output[0],
-                output[1],
-            )
-        )
-    output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
-outputs = output_cache
-output_cache = []
-logger.info("Filtering HWE finished.")
-print()
-
-## 3. filter MAF
-### visualisation
-print("Visualising MAF...")
-os.makedirs("./maf_visualisation")
-with ProcessPoolExecutor() as pool:
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Visualising MAF for {os.path.relpath(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1
-        )
-        pool.submit(
-            vislz.minor_allele_frequency,
-            fm,
-            output[2],
-            os.path.join(os.path.dirname(output[2]), "../", "maf_visualisation", os.path.basename(output[2])+"_maf"),
-            gender=output[0], ethnic=output[1]
-        )
-logger.info("MAF visualisation finished.")
-print()
-### filter MAF
-print("Filtering MAF...")
-with ProcessPoolExecutor() as pool:
-    futures: list[FutureClass] = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Filtering MAF for {os.path.relpath(output[2])}...",
-            len(outputs),
-            outputs.index(output) + 1
-        )
-        futures.append(
-            pool.submit(
-                quality_control.filter_maf,
-                fm,
-                output[2],
-                f"{output[2]}_maf",
-                output[0], output[1],
-                maf_threshold=0.005
-            )
-        )
-    output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
-outputs = output_cache
-output_cache = []
-print()
-logger.info("Filtering MAF finished.")
+        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+    outputs = output_cache
+    output_cache = []
+    print()
+    logger.info("Filtering MAF finished.")
 
 
-### Now we have finished all QC processes.
-### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
+    ### Now we have finished all QC processes.
+    ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
 
-print("Splitting phenotype source files...")
-pheno_files = extract_phenotype_info(
-    fm.output_name_temp_root + "_standardised",
-    fm.phenotype_file_path
-)
+    print("Splitting phenotype source files...")
+    pheno_files = extract_phenotype_info(
+        fm.output_name_temp_root + "_standardised",
+        fm.phenotype_file_path
+    )
 
-print("")
-print("Performing GWAS analysis & visualisation...")
-os.makedirs("assoc_pictures")
-print("Phenotype files:", pheno_files)
-os.mkdir("assoc_results")
-with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
-    futures: list[FutureClass] = []
-    for pheno_file in pheno_files:
+    print("")
+    print("Performing GWAS analysis & visualisation...")
+    os.makedirs("assoc_pictures")
+    print("Phenotype files:", pheno_files)
+    os.mkdir("assoc_results")
+    with ProcessPoolExecutor(max_workers=int(cpu_count()/1.5)) as pool:
+        futures: list[FutureClass] = []
+        for pheno_file in pheno_files:
+            for output in outputs:
+                ## Calculate association
+                pool.submit(
+                    progress_bar.print_progress,
+                        f"Calculating association between {os.path.basename(pheno_file[0])} and {os.path.basename(output[2])}...",
+                        len(outputs) * len(pheno_files),
+                        pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+                )
+                futures.append(pool.submit(
+                    association_analysis.quantitive_association,
+                        fm.plink,
+                        output[2],
+                        pheno_file[0],
+                        pheno_file[1],
+                        os.path.join("assoc_results", f"{os.path.basename(output[2])}_{os.path.splitext(os.path.basename(pheno_file[1]))[0]}"),
+                        output[0],
+                        output[1]
+                ))
+        output_cache = [future.result() for future in as_completed(futures)]
+    outputs = output_cache
+    output_cache = []
+
+    # for output in outputs:
+    #     progress_bar.print_progress(
+    #         f"Visualising association results of {os.path.basename(output[2])}...",
+    #         len(outputs),
+    #         outputs.index(output) + 1
+    #     )
+    #     vislz.assoc_visualisation(
+    #         f"{output[3]}.qassoc",
+    #         os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
+    #         output[0], output[1], output[2]
+    #     )
+
+    with ProcessPoolExecutor(max_workers=int(cpu_count() * 2 / 3)) as pool:
         for output in outputs:
-            ## Calculate association
+            ## Visualise association
             pool.submit(
                 progress_bar.print_progress,
-                    f"Calculating association between {os.path.basename(pheno_file[0])} and {os.path.basename(output[2])}...",
-                    len(outputs) * len(pheno_files),
-                    pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+                    f"Visualising association of {output[2]}...",
+                    len(outputs) + 1,
+                    outputs.index(output)
             )
-            futures.append(pool.submit(
-                association_analysis.quantitive_association,
-                    fm.plink,
-                    output[2],
-                    pheno_file[0],
-                    pheno_file[1],
-                    os.path.join("assoc_results", f"{os.path.basename(output[2])}_{os.path.splitext(os.path.basename(pheno_file[1]))[0]}"),
-                    output[0],
-                    output[1]
-            ))
-    output_cache = [future.result() for future in as_completed(futures)]
-outputs = output_cache
-output_cache = []
-with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
-    for output in outputs:
-        ## Visualise association
-        pool.submit(
-            progress_bar.print_progress,
-                f"Visualising association of {output[2]}...",
-                len(outputs) + 1,
-                outputs.index(output)
-        )
-        pool.submit(
-            vislz.assoc_visualisation,
-                f"{output[3]}.qassoc", 
-                os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
-                output[0], output[1], output[2]
-        )
+            pool.submit(
+                vislz.assoc_visualisation,
+                    f"{output[3]}.qassoc",
+                    os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
+                    output[0], output[1], output[2]
+            )
 
-## 4. Generate summary
-print("Generating summary...")
-os.mkdir("summary")
-with open("summary.tsv", "w") as f:
-    flag = False
-    colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
-    f.write("{}\n".format('\t'.join(colomns)))
+    ## 4. Generate summary
+    print("Generating summary...")
+    os.mkdir("summary")
+
+    qassoc_df: Optional[pl.DataFrame] = None
+    assoc_df: Optional[pl.DataFrame] = None
+
     for output in outputs:
         progress_bar.print_progress(
-            f"processing {output[3]}", len(outputs), outputs.index(output)
+            f"Filtering {output[3]}", len(outputs), outputs.index(output)
         )
         res = association_analysis.result_filter(
             output[3],
             os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-            output[0],output[1],output[2]
+            output[0],output[1],output[2],
+            alpha=0.05,
+            adjust_alpha_by_quantity=True
         )
         if res is None:
             continue
-        res_df = res[3]
-        res_df["gender"] = output[0]
-        res_df["ethnic"] = output[1]
-        res_df["phenotype"] = output[2]
-        if flag is False:
-            flag = True
-            print(res_df)
-        res_df.to_csv(
-            f, sep="\t", mode="a", header=False, index=False
+        if res[3] == "assoc":
+            if assoc_df is None:
+                assoc_df = res[4]
+            else:
+                assoc_df.vstack(res[4], in_place=True)
+        elif res[3] == "qassoc":
+            if qassoc_df is None:
+                qassoc_df = res[4]
+            else:
+                qassoc_df.vstack(res[4], in_place=True)
+
+    if qassoc_df is not None:
+        qassoc_df.write_csv(
+            "summary-q_adjusted.tsv",
+            separator="\t",
+            include_header=True
         )
-### sort summary.tsv by P-value
-summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
-summary_df.sort_values(by="P", inplace=True)
-print(summary_df)
+    if assoc_df is not None:
+        assoc_df.write_csv(
+            "summary-b_adjusted.tsv",
+            separator="\t",
+            include_header=True
+        )
 
-summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
-summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
-
-
-
-
-'''for pheno_file in pheno_files:
     for output in outputs:
         progress_bar.print_progress(
-            f"Calculating association for {pheno_file} and {output}...",
-            len(outputs) * len(pheno_files),
-            pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+            f"Filtering {output[3]}", len(outputs), outputs.index(output)
         )
-        association_analysis.quantitive_association(
-            fm.plink,
-            output,
-            None,
-            pheno_file,
-            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
+        res = association_analysis.result_filter(
+            output[3],
+            os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+            output[0],output[1],output[2],
+            alpha=0.05,
+            adjust_alpha_by_quantity=False
         )
-        progress_bar.print_progress(
-            f"Visualising association for {pheno_file} and {output}...",
-            len(outputs) * len(pheno_files),
-            pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+        if res is None:
+            continue
+        if res[3] == "assoc":
+            if assoc_df is None:
+                assoc_df = res[4]
+            else:
+                assoc_df.vstack(res[4], in_place=True)
+        elif res[3] == "qassoc":
+            if qassoc_df is None:
+                qassoc_df = res[4]
+            else:
+                qassoc_df.vstack(res[4], in_place=True)
+
+    if qassoc_df is not None:
+        qassoc_df.write_csv(
+            "summary-q.tsv",
+            separator="\t",
+            include_header=True
         )
-        vislz.assoc_visualisation(
-            f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc", 
-            os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
-        )'''
+
+    if assoc_df is not None:
+        assoc_df.write_csv(
+            "summary-b.tsv",
+            separator="\t",
+            include_header=True
+        )
+    # with open("summary.tsv", "w") as f:
+    #     flag = False
+    #     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
+    #     f.write("{}\n".format('\t'.join(colomns)))
+    #     for output in outputs:
+    #         progress_bar.print_progress(
+    #             f"Filtering {output[3]}", len(outputs), outputs.index(output)
+    #         )
+    #         res = association_analysis.result_filter_old(
+    #             output[3],
+    #             os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
+    #             output[0],output[1],output[2]
+    #         )
+    #         if res is None:
+    #             continue
+    #         res_df = res[3]
+    #         res_df["gender"] = output[0]
+    #         res_df["ethnic"] = output[1]
+    #         res_df["phenotype"] = output[2]
+    #         # if flag is False:
+    #         #     flag = True
+    #         #     print(res_df)
+    #         res_df.to_csv(
+    #             f, sep="\t", mode="a", header=False, index=False
+    #         )
+    # ### sort summary.tsv by P-value
+    # summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
+    # summary_df.sort_values(by="P", inplace=True)
+    # print(summary_df)
+
+    # summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
+    # summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
+
+
+
+
+    '''for pheno_file in pheno_files:
+        for output in outputs:
+            progress_bar.print_progress(
+                f"Calculating association for {pheno_file} and {output}...",
+                len(outputs) * len(pheno_files),
+                pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+            )
+            association_analysis.quantitive_association(
+                fm.plink,
+                output,
+                None,
+                pheno_file,
+                f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}"
+            )
+            progress_bar.print_progress(
+                f"Visualising association for {pheno_file} and {output}...",
+                len(outputs) * len(pheno_files),
+                pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+            )
+            vislz.assoc_visualisation(
+                f"{os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}.qassoc",
+                os.path.join("assoc_pictures", f"({os.path.basename(output)}_{os.path.splitext(os.path.basename(pheno_file))[0]}_assoc)")
+            )'''
