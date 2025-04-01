@@ -1,7 +1,7 @@
 from argparse import Namespace
-from ast import Call
 import os, logging, sys
 import subprocess
+from typing import Optional
 
 
 class FileManagement(object):
@@ -35,14 +35,17 @@ class FileManagement(object):
                 self.file_dir, self.file_name_root, self.original_ext
         )
 
-        self.plink: str = plink_path
+        self.plink: str = plink_path if plink_path is not None else "plink"
 
-        self.phenotype_file_path: str = os.path.realpath(args.phenotype)
-        self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
-        self.ethnic_reference_path: str = os.path.realpath(args.ethnic_reference)
-        self.gender_info_file_path: str = os.path.realpath(args.gender)
-        self.gender_reference_path: str = os.path.realpath(args.gender_reference)
+        self.phenotype_file_path: Optional[str] = os.path.realpath(args.phenotype)
+        self.phenotype_folder_path: Optional[str] = os.path.realpath(args.phenotypes_folder)
+
+        self.ethnic_info_file_path: Optional[str] = os.path.realpath(args.ethnic)
+        self.ethnic_reference_path: Optional[str] = os.path.realpath(args.ethnic_reference)
         self.loose_ethnic_filter: bool = args.loose_ethnic_filter
+
+        self.gender_info_file_path: Optional[str] = os.path.realpath(args.gender)
+        self.gender_reference_path: Optional[str] = os.path.realpath(args.gender_reference)
         pass
 
     def source_standardisation(self) -> str:
@@ -138,6 +141,7 @@ class FileManagement(object):
 
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
         return f"{self.output_name_temp_root}_standardised"
+
     def phenotype_standardisation(self):
         pass
 
