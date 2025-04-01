@@ -5,21 +5,18 @@
 """
 
 __authors__ = ["hammerklavier", "akka2318", "Ciztro"]
-__version__ = "0.1.1-rc1"
+__version__ = "0.1.1-rc3"
 __description__ = "Automatic single and multiple SNP -- phenotype association analysis python script."
 
 # import neccesary libraries
 ## standard libraries
-import sqlite3
-import subprocess
-import os, logging, sys, argparse
-from typing import Literal, Optional
+import os, logging
+from typing import Optional
 
-import pandas as pd
 import polars as pl
 
 ## self-defined libraries
-
+### Self defined logger
 from myutil import small_tools
 logger = small_tools.create_logger("MainLogger", level=logging.WARN)
 
@@ -31,10 +28,9 @@ import myutil.visualisations as vislz
 
 ## multiprocessing libraries
 from queue import Queue
-from threading import Thread
 import multiprocessing as mp
-from multiprocessing import Process, Event, cpu_count
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures._base import Future as FutureClass
 
 ### Note: the logging library should be gradually replaced with self-defined logger
@@ -106,8 +102,8 @@ if __name__ == "__main__":
         output_cache.extend(result)
     outputs = output_cache
     output_cache = []
-    print()
-    logger.info("Division finished.\n")
+    print("")
+    logger.info("Division finished.")
 
     # QC
     ## 1. filter high missingness
@@ -132,7 +128,7 @@ if __name__ == "__main__":
                     gender=output[0], ethnic=output[1]
                 )
             )
-    print()
+    print("")
     logging.info("Visualising missingness finished.")
 
 
@@ -406,6 +402,7 @@ if __name__ == "__main__":
             separator="\t",
             include_header=True
         )
+
     # with open("summary.tsv", "w") as f:
     #     flag = False
     #     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
