@@ -1,10 +1,9 @@
 import argparse
 import os
 import re
-import sys
 
 parser = argparse.ArgumentParser(
-    description="Extract columns of a csv file"
+    description="Extract phenotype columns of a csv file"
 )
 parser.add_argument(
     "--input", "-i", required=True,
