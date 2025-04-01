@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
 from typing_extensions import deprecated
 from myutil import small_tools
 from typing import Literal
@@ -75,7 +74,6 @@ def result_filter(
     ethnic: str | None = None,
     phenotype: str | None = None,
     *,
-    # strict_filter: bool = False,
     alpha = 0.05,
     adjust_alpha_by_quantity: bool = True
 ) -> tuple[
@@ -104,8 +102,14 @@ def result_filter(
                 memory_file,
                 separator=" ",
                 has_header=True,
-                null_values="NA"
-            )
+                null_values=["NA", "Na", "na", "", "NaN", "nan", "NAN", "Nan"]
+            ).with_columns(
+                pl.col.P.cast(pl.Float64, strict=False)
+            ).drop_nulls()
+
+            if len(qassoc_df) == 0:
+                logger.warning("No valid data found in .qassoc file")
+                return None
 
         # qassoc_df.columns = [x.strip() for x in qassoc_df.columns]
 
@@ -168,7 +172,7 @@ def result_filter(
 
     pass
 
-#@deprecated("Ineffective solution powered by pandas. Will be replaced by polars.")
+@deprecated("Ineffective solution powered by pandas. Will be replaced by polars.")
 def result_filter_old(
     input_path: str,
     output_path: str,
@@ -192,4 +196,4 @@ def result_filter_old(
         assoc_passed = assoc_passed[assoc_passed["NMISS"] > 80]
         assoc_passed = assoc_passed[assoc_passed["R2"] > 0.8]
 
-    return gender, ethnic, phenotype, assoc_passed
+    return gender, ethnic, phenotype, assoc_passed # type: ignore
