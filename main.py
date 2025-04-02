@@ -18,6 +18,7 @@ import polars as pl
 ## self-defined libraries
 ### Self defined logger
 from myutil import small_tools
+from myutil import complements
 logger = small_tools.create_logger("MainLogger", level=logging.WARN)
 
 from args_setup import myargs
@@ -70,18 +71,43 @@ if __name__ == "__main__":
     output_queue = Queue()
 
     # complete gender information in .fam and divide population into male and female groups.
-    if args.gender:
-        print("Completing gender information...")
-        logger.info("Completing gender information...")
-        outputs = group_division.divide_pop_by_gender(
-            fm.plink,
-            output,
-            fm.gender_reference_path,
-            fm.gender_info_file_path
-        )
-        print("Gender information complement finished.")
-    else:
-        logging.warning("No gender information provided, skipping gender complement.")
+    print(fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender)
+    match (fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender):
+        case (str(), str(), True):
+            print("Dividing population by gender...")
+            logger.info("Completing gender information and divide population by gender...")
+            outputs = group_division.divide_pop_by_gender(
+                fm.plink,
+                output,
+                fm.gender_reference_path,
+                fm.gender_info_file_path
+            )
+        case (str(), str(), False):
+            # Complete gender information but do not divide pop by gender
+            logger.info("Completing gender information...")
+            print("Completing gender information...")
+            outputs = complements.gender_complement(
+                fm.plink,
+                output,
+                fm.gender_info_file_path,
+                fm.gender_reference_path
+            )
+            pass
+        case _:
+            print("Gender information is not provided. Skip gender complement.")
+
+    # if args.gender:
+    #     print("Completing gender information...")
+    #     logger.info("Completing gender information...")
+    #     outputs = group_division.divide_pop_by_gender(
+    #         fm.plink,
+    #         output,
+    #         fm.gender_reference_path,
+    #         fm.gender_info_file_path
+    #     )
+    #     print("Gender information complement finished.")
+    # else:
+    #     logging.warning("No gender information provided, skipping gender complement.")
 
     # divide population into ethnic groups
     print("Dividing population into ethnic groups...")

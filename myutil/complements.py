@@ -1,4 +1,6 @@
+import subprocess
 import os, sys, logging
+from typing import Literal
 
 from Classes import FileManagement
 from myutil.small_tools import ProgressBar, create_logger
@@ -195,8 +197,9 @@ def extract_phenotype_info(
     Returns:
         List (list[tuple[str,str]]):
             list of [phenotype name, generated split phenotype info file path]
-    ## Generate Files:
-        %(input_name)s_%(f.*.*).txt"""
+    Note:
+        Generate Files:
+            %(input_name)s_%(f.*.*).txt"""
 
     generated_files: list[tuple[str,str]] = []
 
@@ -432,27 +435,168 @@ def extract_phenotype_info(
     # return generated_files
 
 def gender_complement(
-    fm: FileManagement,
+    plink_path: str,
     input_name: str,
     gender_info_path: str,
-    gender_reference_path: str = "./myutil/gender_serial_reference.csv"
-) -> str:
+    gender_reference_path: str
+) -> list[tuple[Literal["Men", "Women"] | None, str]]:
     """
     complement plink-format file with gender information.
 
-    # Args:
-
-    **fm**: FileManagement object
-
-    **input_name (str)**: _input file **name**_
-
-    **phenotype_info_path (str)**: _path to phenotype information file_
-
-    **gender_reference_path (str)**: _path to gender reference file, which tells which sex a gender code refers to_
-
-    # Returns:
-
-    str: _complemented plink file name_
+    Args:
+        plink (str):
+            path to plink executable
+        input_path (str):
+            input plink-format file name (path without extension)
+        gender_info_path (str):
+            path to the file which contains gender info of all population
+        gender_referencne_path (str):
+            Path to gender reference file, which offers reference of gender codings to their meanings.
+            The file should be in .csv/.tsv/.xlsx/.xls format.
+    Returns:
+        list (list[tuple[Literal["Men", "Women"] | None, str]]):
+            list of tuples, where each tuple is (gender, file_path)
+    Raises:
+        ValueError:
+            if gender_info_path is not a valid path
+            if gender_reference_path is not a valid path
+            if gender_info_path is not a csv/tsv/xls(x) file
+            if gender_reference_path is not a csv/tsv/xls(x) file
+    Note:
+        This function is written with polars so it doesn't need multiprocessing optimisation.
     """
-    # Note: This function is merged in `devide pop by gender``
-    return "complemented_file_name"  # placeholder
+
+    logger.info("Reading gender reference file...")
+    match os.path.splitext(gender_reference_path)[-1]:
+        case ".csv":
+            gender_ref_df = pl.read_csv(gender_reference_path, separator=",", infer_schema=False)
+        case ".tsv":
+            gender_ref_df = pl.read_csv(gender_reference_path, separator="\t", infer_schema=False)
+        case ".xlsx":
+            gender_ref_df = pl.read_excel(gender_reference_path, infer_schema_length=0)
+        case _:
+            logger.error("Unsupported file format: %s", os.path.splitext(gender_reference_path))
+            sys.exit(3)
+
+    logger.info("Reading gender info file...")
+    match os.path.splitext(gender_info_path)[-1]:
+        case ".csv":
+            gender_info_df = pl.read_csv(gender_info_path, separator=",", infer_schema=False)
+        case ".tsv":
+            gender_info_df = pl.read_csv(gender_info_path, separator="\t", infer_schema=False)
+        case ".xlsx":
+            gender_info_df = pl.read_excel(gender_info_path, infer_schema_length=0)
+        case _:
+            logger.error("Unsupported file format: %s", os.path.splitext(gender_info_path))
+            sys.exit(3)
+
+    logger.info("rename columns names...")
+
+    # rename "coding" column in `gender_info_df` to "original_gender_coding"
+    pattern = r".*sex.*|.*gender.*"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df = gender_info_df.rename(
+                {col_name: "original_gender_coding"}
+            )
+            break
+    else:
+        logger.error("No column named 'sex' or 'gender' in %s", gender_info_path)
+        sys.exit(1)
+    # rename "id" column in gender_info_df to "iid"
+    pattern = r".*id.*"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df = gender_info_df.rename(
+                {col_name: "iid"}
+            )
+            break
+    else:
+        logger.error("No column named 'id' in %s", gender_info_path)
+        sys.exit(1)
+
+    # rename "coding" column in `gender_ref_df` to "gender_coding"
+    pattern = r"^.*sex.*$|^.*gender.*$|^coding$|^code$"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df = gender_ref_df.rename(
+                {col_name: "gender_coding"}
+            )
+            break
+    else:
+        logger.error(
+            "No column named 'sex' or 'gender' in %s. Colnames: %s", 
+            gender_reference_path, 
+            ", ".join(gender_ref_df.columns)
+        )
+        sys.exit(1)
+    # rename "original_coding" in `gender_ref_df` to "original_gender_coding"
+    pattern = r".*original.*"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df = gender_ref_df.rename(
+                {col_name: "original_gender_coding"}
+            )
+            break
+    else:
+        logger.error("No column contains 'original' in %s", gender_reference_path)
+        sys.exit(1)
+
+    # merge gender_serial_reference and gender_info
+    # print(gender_info_df)
+    # print(gender_ref_df)
+    merged_gender_info = gender_info_df.join(
+        gender_ref_df,
+        left_on="original_gender_coding",
+        right_on="original_gender_coding",
+        how="inner"
+    ).drop(
+        "original_gender_coding"
+    )
+
+    # merge merged_gender_info and .fam and replace the original one
+    ## determine the separator of .fam
+    with open(f"{input_name}.fam", 'r') as f:
+        first_line = f.readline()
+        if first_line.count("\t") > first_line.count(" "):
+            separator = "\t"
+            logger.info("Detected tab as separator in .fam")
+        else:
+            separator = " "
+            logger.info("Detected space as separator in .fam")
+
+    fam_df = pl.read_csv(f"{input_name}.fam", separator=separator, infer_schema=False)
+    fam_df.columns = ["FID", "IID", "PID", "MID", "gender", "pheno"]
+    merged_fam = fam_df.join(
+        merged_gender_info,
+        left_on="IID",
+        right_on="iid",
+        how="inner"
+    ).select("FID", "IID", "gender_coding")
+    ## write result to a tsv file
+    merged_fam.write_csv(
+        f"{input_name}_gender.tsv",
+        separator="\t",
+        include_header=True,
+    )
+    logger.info("Successfully complemented gender information")
+
+    # complement gender information by plink `--update-sex`
+    output_file_names: list[tuple[Literal["Male", "Female"]|None, str]] = []
+    plink_cmd = [
+        plink_path,
+        "--bfile", input_name,
+        "--update-sex", f"{input_name}_gender.tsv",
+        "--make-bed",
+        "--out", f"{input_name}_complemented"
+    ]
+    subprocess.run(
+        plink_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+    logger.info("Successfully complemented gender information by plink")
+    output_file_names.append((None, f"{input_name}_complemented"))
+
+    return output_file_names
