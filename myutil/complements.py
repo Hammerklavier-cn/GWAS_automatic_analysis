@@ -439,7 +439,7 @@ def gender_complement(
     input_name: str,
     gender_info_path: str,
     gender_reference_path: str
-) -> list[tuple[Literal["Men", "Women"] | None, str]]:
+) -> list[tuple[Literal["male", "female"] | None, str]]:
     """
     complement plink-format file with gender information.
 
@@ -582,13 +582,13 @@ def gender_complement(
     logger.info("Successfully complemented gender information")
 
     # complement gender information by plink `--update-sex`
-    output_file_names: list[tuple[Literal["Male", "Female"]|None, str]] = []
+    output_file_names: list[tuple[Literal["male", "female"]|None, str]] = []
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
         "--update-sex", f"{input_name}_gender.tsv",
         "--make-bed",
-        "--out", f"{input_name}_complemented"
+        "--out", f"{input_name}_both-gender"
     ]
     subprocess.run(
         plink_cmd,
@@ -597,6 +597,6 @@ def gender_complement(
         check=True,
     )
     logger.info("Successfully complemented gender information by plink")
-    output_file_names.append((None, f"{input_name}_complemented"))
+    output_file_names.append((None, f"{input_name}_both-gender"))
 
     return output_file_names
