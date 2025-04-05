@@ -11,6 +11,7 @@ __description__ = "Automatic single and multiple SNP -- phenotype association an
 # import neccesary libraries
 ## standard libraries
 import os, logging
+import sys
 from typing import Optional
 
 import polars as pl
@@ -110,26 +111,32 @@ if __name__ == "__main__":
     #     logging.warning("No gender information provided, skipping gender complement.")
 
     # divide population into ethnic groups
-    print("Dividing population into ethnic groups...")
-    output_cache: list = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Divide {os.path.relpath(output[1])} into ethnic groups...",
-            len(outputs),
-            outputs.index(output) + 1 # type: ignore
-        )
-        result = group_division.divide_pop_by_ethnic(
-            fm.plink,
-            output[1],
-            fm.ethnic_info_file_path,
-            fm.ethnic_reference_path,
-            output[0]
-        )
-        output_cache.extend(result)
-    outputs = output_cache
-    output_cache = []
-    print("")
-    logger.info("Division finished.")
+    match (fm.ethnic_info_file_path, fm.ethnic_reference_path):
+        case (str(), str()):
+            print("Dividing population into ethnic groups...")
+            output_cache: list = []
+            for output in outputs:
+                progress_bar.print_progress(
+                    f"Divide {os.path.relpath(output[1])} into ethnic groups...",
+                    len(outputs),
+                    outputs.index(output) + 1 # type: ignore
+                )
+                result = group_division.divide_pop_by_ethnic(
+                    fm.plink,
+                    output[1],
+                    fm.ethnic_info_file_path,
+                    fm.ethnic_reference_path,
+                    output[0],
+                    fm.loose_ethnic_filter
+                )
+                output_cache.extend(result)
+            outputs = output_cache
+            output_cache = []
+            print("")
+            logger.info("Division finished.")
+        case _:
+            print("No ethnic information provided, skipping ethnic complement.")
+            outputs = [(output[0], "all_ethnic_groups", output[1]) for output in outputs]
 
     # QC
     ## 1. filter high missingness
@@ -284,10 +291,17 @@ if __name__ == "__main__":
     ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
 
     print("Splitting phenotype source files...")
-    pheno_files = extract_phenotype_info(
-        fm.output_name_temp_root + "_standardised",
-        fm.phenotype_file_path
-    )
+    match fm.phenotype_file_path, fm.phenotype_folder_path:
+        case str() as path, None:
+            pheno_files = extract_phenotype_info(
+                fm.output_name_temp_root + "_standardised",
+                path
+            )
+        case None, str() as path:
+            pheno_files = [(file, os.path.splitext(os.path.basename(file))[0]) for file in os.listdir(path) if file.endswith(".txt")]
+        case _:
+            logger.fatal("Theoratically impossible!")
+            sys.exit(1)
 
     print("")
     print("Performing GWAS analysis & visualisation...")
