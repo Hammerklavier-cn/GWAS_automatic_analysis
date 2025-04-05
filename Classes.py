@@ -1,7 +1,7 @@
 from argparse import Namespace
-from ast import Call
 import os, logging, sys
 import subprocess
+from typing import Optional
 
 
 class FileManagement(object):
@@ -35,14 +35,18 @@ class FileManagement(object):
                 self.file_dir, self.file_name_root, self.original_ext
         )
 
-        self.plink: str = plink_path
+        self.plink: str = plink_path if plink_path is not None else "plink"
 
-        self.phenotype_file_path: str = os.path.realpath(args.phenotype)
-        self.ethnic_info_file_path: str = os.path.realpath(args.ethnic)
-        self.ethnic_reference_path: str = os.path.realpath(args.ethnic_reference)
-        self.gender_info_file_path: str = os.path.realpath(args.gender)
-        self.gender_reference_path: str = os.path.realpath(args.gender_reference)
+        self.phenotype_file_path: Optional[str] = os.path.realpath(args.phenotype) if args.phenotype is not None else None
+        self.phenotype_folder_path: Optional[str] = os.path.realpath(args.phenotypes_folder) if args.phenotypes_folder is not None else None
+
+        self.ethnic_info_file_path: Optional[str] = os.path.realpath(args.ethnic) if args.ethnic is not None else None
+        self.ethnic_reference_path: Optional[str] = os.path.realpath(args.ethnic_reference) if args.ethnic_reference is not None else None
         self.loose_ethnic_filter: bool = args.loose_ethnic_filter
+
+        self.gender_info_file_path: Optional[str] = os.path.realpath(args.gender) if args.gender is not None else None
+        self.gender_reference_path: Optional[str] = os.path.realpath(args.gender_reference) if args.gender_reference is not None else None
+        self.divide_pop_by_gender: bool = args.divide_pop_by_gender
         pass
 
     def source_standardisation(self) -> str:
@@ -138,6 +142,7 @@ class FileManagement(object):
 
         self.set_working_file(f"{self.output_name_temp_root}_standardised")
         return f"{self.output_name_temp_root}_standardised"
+
     def phenotype_standardisation(self):
         pass
 

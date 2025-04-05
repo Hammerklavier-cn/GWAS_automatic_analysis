@@ -12,6 +12,7 @@ from typing import Optional
 from myutil.small_tools import create_logger
 
 logger = create_logger("GroupDivisionLogger", level=logging.WARN)
+
 def divide_pop_by_ethnic(
         plink_path: str,
         input_name: str,

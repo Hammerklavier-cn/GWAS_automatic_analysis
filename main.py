@@ -5,22 +5,21 @@
 """
 
 __authors__ = ["hammerklavier", "akka2318", "Ciztro"]
-__version__ = "0.1.1-rc1"
+__version__ = "0.1.1-rc3"
 __description__ = "Automatic single and multiple SNP -- phenotype association analysis python script."
 
 # import neccesary libraries
 ## standard libraries
-import sqlite3
-import subprocess
-import os, logging, sys, argparse
-from typing import Literal, Optional
+import os, logging
+import sys
+from typing import Optional
 
-import pandas as pd
 import polars as pl
 
 ## self-defined libraries
-
+### Self defined logger
 from myutil import small_tools
+from myutil import complements
 logger = small_tools.create_logger("MainLogger", level=logging.WARN)
 
 from args_setup import myargs
@@ -31,10 +30,9 @@ import myutil.visualisations as vislz
 
 ## multiprocessing libraries
 from queue import Queue
-from threading import Thread
 import multiprocessing as mp
-from multiprocessing import Process, Event, cpu_count
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures._base import Future as FutureClass
 
 ### Note: the logging library should be gradually replaced with self-defined logger
@@ -74,40 +72,71 @@ if __name__ == "__main__":
     output_queue = Queue()
 
     # complete gender information in .fam and divide population into male and female groups.
-    if args.gender:
-        print("Completing gender information...")
-        logger.info("Completing gender information...")
-        outputs = group_division.divide_pop_by_gender(
-            fm.plink,
-            output,
-            fm.gender_reference_path,
-            fm.gender_info_file_path
-        )
-        print("Gender information complement finished.")
-    else:
-        logging.warning("No gender information provided, skipping gender complement.")
+    print(fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender)
+    match (fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender):
+        case (str(), str(), True):
+            print("Dividing population by gender...")
+            logger.info("Completing gender information and divide population by gender...")
+            outputs = group_division.divide_pop_by_gender(
+                fm.plink,
+                output,
+                fm.gender_reference_path,
+                fm.gender_info_file_path
+            )
+        case (str(), str(), False):
+            # Complete gender information but do not divide pop by gender
+            logger.info("Completing gender information...")
+            print("Completing gender information...")
+            outputs = complements.gender_complement(
+                fm.plink,
+                output,
+                fm.gender_info_file_path,
+                fm.gender_reference_path
+            )
+            pass
+        case _:
+            print("Gender information is not provided. Skip gender complement.")
+
+    # if args.gender:
+    #     print("Completing gender information...")
+    #     logger.info("Completing gender information...")
+    #     outputs = group_division.divide_pop_by_gender(
+    #         fm.plink,
+    #         output,
+    #         fm.gender_reference_path,
+    #         fm.gender_info_file_path
+    #     )
+    #     print("Gender information complement finished.")
+    # else:
+    #     logging.warning("No gender information provided, skipping gender complement.")
 
     # divide population into ethnic groups
-    print("Dividing population into ethnic groups...")
-    output_cache: list = []
-    for output in outputs:
-        progress_bar.print_progress(
-            f"Divide {os.path.relpath(output[1])} into ethnic groups...",
-            len(outputs),
-            outputs.index(output) + 1 # type: ignore
-        )
-        result = group_division.divide_pop_by_ethnic(
-            fm.plink,
-            output[1],
-            fm.ethnic_info_file_path,
-            fm.ethnic_reference_path,
-            output[0]
-        )
-        output_cache.extend(result)
-    outputs = output_cache
-    output_cache = []
-    print()
-    logger.info("Division finished.\n")
+    match (fm.ethnic_info_file_path, fm.ethnic_reference_path):
+        case (str(), str()):
+            print("Dividing population into ethnic groups...")
+            output_cache: list = []
+            for output in outputs:
+                progress_bar.print_progress(
+                    f"Divide {os.path.relpath(output[1])} into ethnic groups...",
+                    len(outputs),
+                    outputs.index(output) + 1 # type: ignore
+                )
+                result = group_division.divide_pop_by_ethnic(
+                    fm.plink,
+                    output[1],
+                    fm.ethnic_info_file_path,
+                    fm.ethnic_reference_path,
+                    output[0],
+                    fm.loose_ethnic_filter
+                )
+                output_cache.extend(result)
+            outputs = output_cache
+            output_cache = []
+            print("")
+            logger.info("Division finished.")
+        case _:
+            print("No ethnic information provided, skipping ethnic complement.")
+            outputs = [(output[0], "all_ethnic_groups", output[1]) for output in outputs]
 
     # QC
     ## 1. filter high missingness
@@ -132,7 +161,7 @@ if __name__ == "__main__":
                     gender=output[0], ethnic=output[1]
                 )
             )
-    print()
+    print("")
     logging.info("Visualising missingness finished.")
 
 
@@ -262,10 +291,17 @@ if __name__ == "__main__":
     ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
 
     print("Splitting phenotype source files...")
-    pheno_files = extract_phenotype_info(
-        fm.output_name_temp_root + "_standardised",
-        fm.phenotype_file_path
-    )
+    match fm.phenotype_file_path, fm.phenotype_folder_path:
+        case str() as path, None:
+            pheno_files = extract_phenotype_info(
+                fm.output_name_temp_root + "_standardised",
+                path
+            )
+        case None, str() as path:
+            pheno_files = [(file, os.path.splitext(os.path.basename(file))[0]) for file in os.listdir(path) if file.endswith(".txt")]
+        case _:
+            logger.fatal("Theoratically impossible!")
+            sys.exit(1)
 
     print("")
     print("Performing GWAS analysis & visualisation...")
@@ -406,6 +442,7 @@ if __name__ == "__main__":
             separator="\t",
             include_header=True
         )
+
     # with open("summary.tsv", "w") as f:
     #     flag = False
     #     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]

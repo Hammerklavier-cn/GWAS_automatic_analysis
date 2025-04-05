@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 import argparse
 import shutil
 from typing import Literal
@@ -9,14 +9,16 @@ import logging, os, sys
 def setup():
     parser = argparse.ArgumentParser()
     ### determine single SNP or multiple SNP analysis mode
-    sing_multi_modegroup = parser.add_argument_group()
-    sing_multi_modegroup.add_argument(
+    single_multi_modegroup = parser.add_argument_group(
+        description="Determine single SNP or multiple SNP analysis mode.")
+    single_multi_exclusive_group = single_multi_modegroup.add_mutually_exclusive_group()
+    single_multi_exclusive_group.add_argument(
         "--single", action="store_true",
-        help="to analyse association between single SNP and phenotype"
+        help="To analyse association between single SNP and phenotype. This is the default option."
     )
-    sing_multi_modegroup.add_argument(
+    single_multi_exclusive_group.add_argument(
         "--multiple", type=int,
-        help="to analyse association between multiple SNP and phenotype"
+        help="To analyse association between multiple SNP and phenotype. Warning: This feature is not implemented yet!"
     )
     ### designate source file. Currently .vcf and .bed, .ped file is supported.
     parser.add_argument(
@@ -30,7 +32,7 @@ def setup():
     )
     ### designate phenotype file path.
     phenotype_group = parser.add_argument_group(
-        title="Phenotype relating options.",
+        title="Phenotype relating options",
         description="Specify files containing phenotype information, or folder containing seperate files, each of which contains information about single phenotype."
     )
     phenotype_exclusive_group = phenotype_group.add_mutually_exclusive_group()
@@ -40,35 +42,50 @@ def setup():
     )
     phenotype_exclusive_group.add_argument(
         "--phenotypes-folder", type=str, default=None,
-        help="Folder containing files, each of which contains single"
+        help="Folder containing files, each of which contains single phenotype data. Default is None."
     )
+
     ### designate ethnic info file path.
-    parser.add_argument(
+    ethnic_group = parser.add_argument_group(
+        title="Ethnicity relating options",
+        description="Specify files containing ethnicity information. Note that `--ethnic` and `--ethnic-reference` must be provided together."
+    )
+    ethnic_group.add_argument(
         "--ethnic", type=str, default=None,
         help="csv/tsv/xls(x) file which contains ethnic info. Default is None."
     )
     ### designate reference file path of serial number of ethnic.
-    parser.add_argument(
-        "--ethnic-reference", type=str, default="./myutil/ethnic_serial_reference.tsv",
-        help="csv/tsv/xls(x) file which contains ethnic-serial reference. Default is `./myutil/ethnic_serial_reference.tsv`."
+    ethnic_group.add_argument(
+        "--ethnic-reference", type=str, default=None,
+        help="csv/tsv/xls(x) file which contains ethnic-serial reference. Default is None, meaning that the group will not be divided by ethnic."
     )
-    parser.add_argument(
+    ethnic_group.add_argument(
         "--loose-ethnic-filter", action="store_true",
         help="Filter pops according to general ethnic group"
     )
-    parser.add_argument(
-        "--gender", type=str, default="",
+
+    gender_group = parser.add_argument_group(
+        title="Gender relating options",
+        description="Specify files containing gender information. Note that `--gender` and `--gender-reference` must be provided together."
+    )
+    gender_group.add_argument(
+        "--gender", type=str, default=None,
         help="csv/tsv/xls(x) file which contains gender info. Default is empty string."
     )
-    parser.add_argument(
-        "--gender-reference", type=str, default="./myutil/gender_serial_reference.csv",
-        help="csv/tsv/xls(x) file which contains gender-serial reference. Default is `./myutil/gender_serial_reference.csv`."
+    gender_group.add_argument(
+        "--gender-reference", type=str, default=None,
+        help="csv/tsv/xls(x) file which contains gender-serial reference. Default is None, meaning that the group will not be divided by gender."
+    )
+    gender_group.add_argument(
+        "--divide-pop-by-gender", action="store_true",
+        help="Whether or not to divide population by gender."
     )
     return parser
 
 def check(parser: ArgumentParser):
     ## get args
     args = parser.parse_args()
+
     ## args logical check
     ### check analysis mode
     analysis_mode: Literal["single", "multi"]
@@ -80,11 +97,12 @@ def check(parser: ArgumentParser):
         logging.fatal("`--multiple` mode is still a feature function!")
         sys.exit(11)
     elif args.single:
-        logging.info(f"To analyse association between phenotype and single SNP...")
+        logging.info("To analyse association between phenotype and single SNP...")
         analysis_mode = "single"
     else:
         logging.fatal("Defects in args check algorithm! Please report this to q5vsx3@163.com.")
         sys.exit(-1)
+
     ### check if sorce file is valid
     source_file_name: str
     if not os.path.isfile(args.file_name):
@@ -93,6 +111,7 @@ def check(parser: ArgumentParser):
     else:
         source_file_name = args.file_name
         logging.debug("Valid source file path")
+
     ### check plink
     plink_path: str | None
     if args.plink_path:
@@ -106,10 +125,23 @@ def check(parser: ArgumentParser):
             logging.error("plink executable not found in PATH!")
             parser.error("plink executable not found in PATH!")
     logging.info("plink executable path: %s", plink_path)
+
+    ### check gender options
+    match (args.gender, args.gender_reference):
+        case (None, str() as path):
+            logging.error("`--gender-reference` offered as %s; `--gender` required.", path)
+            parser.error("Both `--gender` and `--gender-reference` are required!")
+        case (str() as path, None):
+            logging.error("`--gender` offered as %s; `--gender-reference` required.", path)
+            parser.error("Both `--gender` and `--gender-reference` are required!")
+        case (str() as path, str() as ref_path):
+            logging.info("Gender reference path: %s", ref_path)
+            logging.info("Gender path: %s", path)
+
     ### check phenotype
     if args.phenotype is None and \
-        not (source_file_name.endswith(".vcf")
-             or source_file_name.endswith(".vcf.gz")):
+        (source_file_name.endswith(".vcf")
+            or source_file_name.endswith(".vcf.gz")):
         parser.error("""
             missing --phenotype option.
             You must specific a file containing phenotype data as genotype data is in `.vcf` format!
@@ -119,3 +151,15 @@ def check(parser: ArgumentParser):
             parser.error(f"""
                 Phenotype file does not exist. Given: {args.phenotype}
             """)
+
+    ### check ethnic options
+    match (args.ethnic, args.ethnic_reference):
+        case (None, str() as path):
+            logging.error("`--ethnic-reference` offered as %s; `--ethnic` required.", path)
+            parser.error("Both `--ethnic` and `--ethnic-reference` are required!")
+        case (str() as path, None):
+            logging.error("`--ethnic` offered as %s; `--ethnic-reference` required.", path)
+            parser.error("Both `--ethnic` and `--ethnic-reference` are required!")
+        case (str() as path, str() as ref_path):
+            logging.info("Ethnic reference path: %s", ref_path)
+            logging.info("Ethnic path: %s", path)
