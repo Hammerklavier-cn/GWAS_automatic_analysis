@@ -1,6 +1,6 @@
 import subprocess
 import os, sys, logging
-from typing import Literal
+from typing import Literal, Sequence
 
 from Classes import FileManagement
 from myutil.small_tools import ProgressBar, create_logger
@@ -439,7 +439,7 @@ def gender_complement(
     input_name: str,
     gender_info_path: str,
     gender_reference_path: str
-) -> list[tuple[Literal["male", "female"] | None, str]]:
+) -> Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]:
     """
     complement plink-format file with gender information.
 
@@ -450,11 +450,11 @@ def gender_complement(
             input plink-format file name (path without extension)
         gender_info_path (str):
             path to the file which contains gender info of all population
-        gender_referencne_path (str):
+        gender_reference_path (str):
             Path to gender reference file, which offers reference of gender codings to their meanings.
             The file should be in .csv/.tsv/.xlsx/.xls format.
     Returns:
-        list (list[tuple[Literal["Men", "Women"] | None, str]]):
+        list (Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]):
             list of tuples, where each tuple is (gender, file_path)
     Raises:
         ValueError:
@@ -525,8 +525,8 @@ def gender_complement(
             break
     else:
         logger.error(
-            "No column named 'sex' or 'gender' in %s. Colnames: %s", 
-            gender_reference_path, 
+            "No column named 'sex' or 'gender' in %s. Colnames: %s",
+            gender_reference_path,
             ", ".join(gender_ref_df.columns)
         )
         sys.exit(1)
