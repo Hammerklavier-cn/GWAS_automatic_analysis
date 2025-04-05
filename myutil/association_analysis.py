@@ -197,3 +197,98 @@ def result_filter_old(
         assoc_passed = assoc_passed[assoc_passed["R2"] > 0.8]
 
     return gender, ethnic, phenotype, assoc_passed # type: ignore
+
+def linear_regression(
+    plink_path: str,
+    input_name: str,
+    phenotype_name: str,
+    phenotype_info_path: str,
+    output_name: str,
+    gender: Literal["male", "female"] | None = None,
+    ethnic: str | None = None,
+) -> tuple[Literal["male", "female"] | None, str | None, str | None, str]:
+    """
+    Perform a linear regression analysis using PLINK for a quantitive phenotype.
+
+    It will generate a `.assoc.linear` file, which contains the results of the linear regression analysis.
+
+    Args:
+        plink_path (str):
+            The path to the PLINK executable.
+        input_name (str):
+            The name of the input file.
+        phenotype_name (str):
+            The name of the phenotype.
+        phenotype_info_path (str):
+            The path to the phenotype information file.
+        output_name (str):
+            Name of the output file.
+        gender (Literal["male", "female"] | None, optional):
+            The gender of the individuals. Defaults to None.
+        ethnic (str | None, optional):
+            The ethnicity of the individuals. Defaults to None.
+    Returns:
+        tuple (tuple[Literal["male", "female"] | None, str | None, str | None, str]):
+            A tuple containing the gender, ethnicity, phenotype, and output file name.
+    Generate Files:
+        %(output_name)s.assoc.linear
+    """
+    logger.info("Perform a linear regression analysis using PLINK for a quantitive phenotype")
+    pass
+
+def multidimensional_scaling(
+    plink_path: str,
+    input_name: str,
+    phenotype_name: str | None,
+    phenotype_info_path: str,
+    output_path: str,
+    dimension_count: int = 10
+):
+    """
+    Perform a multidimensional scaling analysis using PLINK for a quantitive or binary phenotype.
+
+    It will generate a `.assoc.mds` file, which contains the results of the multidimensional scaling analysis.
+
+    Args:
+        plink_path (str):
+            Path to the plink executable.
+        input_name (str):
+            Name of the input file. (path excluding the extension)
+        phenotype_info_path (str):
+            Path to the phenotype information file.
+        output_path (str):
+            Path to the output file. (path including the extension)
+        dimension_count (int):
+            Number of dimensions to use for the multidimensional scaling analysis. Defaults to 10.
+    Generate File:
+        %(output_path)
+    """
+    logger.info("Perform a multidimensional scaling analysis using PLINK for a quantitive or binary phenotype")
+    command = [
+        plink_path,
+        "--bfile", input_name,
+        "--pheno", phenotype_info_path,
+        "--cluster",
+        "--mds-plot", str(dimension_count),
+        "--out", f"{input_name}_{phenotype_name}",
+    ]
+    subprocess.run(
+        command, 
+        stdout=subprocess.DEVNULL, 
+        stderr=subprocess.DEVNULL,
+        check=True
+    )
+    logger.info(
+        "Finished calculating multidimensional scaling analysis between %s and %s.",
+        phenotype_name,
+        input_name
+    )
+    logger.debug("Transferring file to `--covar`` format")
+    mds_result_lf = pl.scan_csv(
+        f"{input_name}_{phenotype_name}.mds",
+        separator="\t",
+        infer_schema=False,
+        null_values="NA"
+    )
+    
+    pass
