@@ -1,17 +1,16 @@
-import os, sys, subprocess, logging
+import subprocess
+import os, sys, logging
+from typing import Literal, Sequence
 
-from pandas import StringDtype
 from Classes import FileManagement
 from myutil.small_tools import ProgressBar, create_logger
 from deprecated.sphinx import deprecated
 
 import json
-import os
 import re
-import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from multiprocessing import Manager
-from concurrent.futures._base import Future as FutureClass
+# from concurrent.futures import ProcessPoolExecutor, as_completed
+# from multiprocessing import Manager
+# from concurrent.futures._base import Future as FutureClass
 
 import numpy as np
 import pandas as pd
@@ -59,7 +58,7 @@ def phenotype_complement(
         end_index = min(now_index + num_cols_per_file - 1, total_count)
         for i in range(now_index, end_index + 1):
             cols_to_read.append(cols_first_appear[i - 1])
-        df = pd.read_csv(input_file, usecols=cols_to_read, low_memory=False)
+        df = pd.read_csv(input_file, usecols=cols_to_read, low_memory=False) # type: ignore
 
         # 替换NA——>-9
         for i in range(len(df.columns) - 1):
@@ -99,6 +98,7 @@ def phenotype_complement(
         count += 1
 
 ## define single work process. Note that in order to make it work properly on Windows system, all variables should be passed by value.
+@deprecated("Polars supports native multithreading. This pandas-derived complement function is no longer needed.", version="0.1.0")
 def _work_thread(
     header: str, pattern: str,
     generated_files_queue,
@@ -108,27 +108,27 @@ def _work_thread(
     pheno_info_path: str
 ):
     logger = create_logger("complementLogger", level=logging.DEBUG)
-    save_path = os.path.join(os.path.dirname(input_name), os.path.splitext(os.path.basename(input_name))[0])
+    # save_path = os.path.join(os.path.dirname(input_name), os.path.splitext(os.path.basename(input_name))[0])
     try:
         #-- print(f"\nLaunched process for {header}.")
         #-- print(f"Reading phenotype info from {pheno_info_path}.")
         if pheno_info_path.endswith('.tsv'):
             pheno_df = pd.read_csv(
                 pheno_info_path,
-                usecols=[iid_header, header], sep=r"\s+",
+                usecols=[iid_header, header], sep=r"\s+", # type: ignore
                 dtype=pd.StringDtype()
             )
         elif os.path.splitext(pheno_info_path)[-1] == ".csv":
             pheno_df = pd.read_csv(
                 pheno_info_path,
-                usecols=[iid_header, header], sep=r",",
+                usecols=[iid_header, header], sep=r",", # type: ignore
                 dtype=pd.StringDtype()
             )
         else:
             pheno_df = pd.read_csv(
                 pheno_info_path,
                 engine="python",
-                usecols=[iid_header, header],
+                usecols=[iid_header, header], # type: ignore
                 dtype=pd.StringDtype()
             )
         ### 数据清洗 Replace NA and other strings with -9
@@ -197,8 +197,9 @@ def extract_phenotype_info(
     Returns:
         List (list[tuple[str,str]]):
             list of [phenotype name, generated split phenotype info file path]
-    ## Generate Files:
-        %(input_name)s_%(f.*.*).txt"""
+    Note:
+        Generate Files:
+            %(input_name)s_%(f.*.*).txt"""
 
     generated_files: list[tuple[str,str]] = []
 
@@ -358,103 +359,244 @@ def extract_phenotype_info(
 
     return generated_files
 
-    generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
-    pattern = r"^-*\d+\.?\d*$"
-    with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/1.)) as pool: # type: ignore
-        count = 0
-        #-- print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
-        futures: list[FutureClass] = []
-        for header in accepted_headers:
-            # progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
-            pool.submit(
-                progress_bar.print_progress, f"processing {header}", len(accepted_headers), count := count + 1
-            )
-            future = pool.submit(
-                _work_thread,
-                    header, pattern,
-                    generated_files_queue,
-                    fam_df,
-                    iid_header, input_name, pheno_info_path
-            )
-            if future is None:
-                logger.error("future is None!")
-            else:
-                logger.debug("future is not None!")
-                futures.append(future)
-        for future in as_completed(futures):
-            try:
-                result = future.result()
-                #-- print(f"Task completed with result: {result}")
-            except Exception as e:
-                logging.warning(f"Caught an exception from a worker thread: {e}")
+    # generated_files_queue = Manager().Queue(maxsize=len(accepted_headers)*2)
+    # pattern = r"^-*\d+\.?\d*$"
+    # with ProcessPoolExecutor(max_workers=int(float(os.cpu_count())/1.)) as pool: # type: ignore
+    #     count = 0
+    #     #-- print(f"\nall headers: {headers} \naccepted headers: {accepted_headers}")
+    #     futures: list[FutureClass] = []
+    #     for header in accepted_headers:
+    #         # progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+    #         pool.submit(
+    #             progress_bar.print_progress, f"processing {header}", len(accepted_headers), count := count + 1
+    #         )
+    #         future = pool.submit(
+    #             _work_thread,
+    #                 header, pattern,
+    #                 generated_files_queue,
+    #                 fam_df,
+    #                 iid_header, input_name, pheno_info_path
+    #         )
+    #         if future is None:
+    #             logger.error("future is None!")
+    #         else:
+    #             logger.debug("future is not None!")
+    #             futures.append(future)
+    #     for future in as_completed(futures):
+    #         try:
+    #             result = future.result()
+    #             #-- print(f"Task completed with result: {result}")
+    #         except Exception as e:
+    #             logging.warning(f"Caught an exception from a worker thread: {e}")
 
-    '''for header in accepted_headers:
-        progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
-        _work_thread(header, pattern, generated_files_queue, fam_df, iid_header, input_name, pheno_info_path)'''
-        # get all generated file paths from the queue
+    # '''for header in accepted_headers:
+    #     progress_bar.print_progress(f"processing {header}", len(accepted_headers), count := count + 1)
+    #     _work_thread(header, pattern, generated_files_queue, fam_df, iid_header, input_name, pheno_info_path)'''
+    #     # get all generated file paths from the queue
 
-    generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
+    # generated_files = [generated_files_queue.get() for _ in range(generated_files_queue.qsize())]
 
-    return generated_files
+    # return generated_files
 
-    # The following should be deprecated and adapted.
-    count = 0; print()
-    for header in accepted_headers:
-        count += 1
-        progress_bar.print_progress(f"processing {header}", len(accepted_headers), count)
-        pheno_df = pd.read_csv(
-            pheno_info_path,
-            usecols=[iid_header, header], sep=r"\s+",
-            dtype=pd.StringDtype()
-        )
-        # replace NA and other strings with -9
-        pattern = r"^-*\d+\.?\d*$"
-        pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
-        for i in range(len(pheno_df)):
-            if pheno_df.iloc[i, 1] == np.nan:
-                pheno_df.iloc[i, 1] = "-9"
-                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
-            elif re.match(pattern, pheno_df.iloc[i, 1]):
-                logger.debug("%s is a valid phenotype number")
-            elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
-                pheno_df.iloc[i, 1] = "-9"
-                logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
+    # # The following should be deprecated and adapted.
+    # count = 0; print()
+    # for header in accepted_headers:
+    #     count += 1
+    #     progress_bar.print_progress(f"processing {header}", len(accepted_headers), count)
+    #     pheno_df = pd.read_csv(
+    #         pheno_info_path,
+    #         usecols=[iid_header, header], sep=r"\s+",
+    #         dtype=pd.StringDtype()
+    #     )
+    #     # replace NA and other strings with -9
+    #     pattern = r"^-*\d+\.?\d*$"
+    #     pheno_df.loc[:, header] = pheno_df.loc[:, header].fillna("-9")
+    #     for i in range(len(pheno_df)):
+    #         if pheno_df.iloc[i, 1] == np.nan:
+    #             pheno_df.iloc[i, 1] = "-9"
+    #             logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
+    #         elif re.match(pattern, pheno_df.iloc[i, 1]):
+    #             logger.debug("%s is a valid phenotype number")
+    #         elif re.match(r"nan?", pheno_df.iloc[i, 1], re.IGNORECASE):
+    #             pheno_df.iloc[i, 1] = "-9"
+    #             logger.debug("%s is replaced with -9, for it is not available.", pheno_df.iloc[i, 1])
 
-        # merge phenotype data with .fam in order to complement FID.
-        pheno_tosave = pd.merge(
-            fam_df, pheno_df,
-            how="inner", left_on="IID", right_on=iid_header
-        ).loc[:,["FID", "IID", header]]
-        pheno_tosave.to_csv(
-            f"{input_name}_{header}.txt",
-            sep='\t', header=True, index=False
-        )
-        generated_files[header] = f"{input_name}_{header}.txt"
+    #     # merge phenotype data with .fam in order to complement FID.
+    #     pheno_tosave = pd.merge(
+    #         fam_df, pheno_df,
+    #         how="inner", left_on="IID", right_on=iid_header
+    #     ).loc[:,["FID", "IID", header]]
+    #     pheno_tosave.to_csv(
+    #         f"{input_name}_{header}.txt",
+    #         sep='\t', header=True, index=False
+    #     )
+    #     generated_files[header] = f"{input_name}_{header}.txt"
 
-    return generated_files
+    # return generated_files
 
 def gender_complement(
-    fm: FileManagement,
+    plink_path: str,
     input_name: str,
     gender_info_path: str,
-    gender_reference_path: str = "./myutil/gender_serial_reference.csv"
-) -> str:
+    gender_reference_path: str
+) -> Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]:
     """
     complement plink-format file with gender information.
 
-    # Args:
-
-    **fm**: FileManagement object
-
-    **input_name (str)**: _input file **name**_
-
-    **phenotype_info_path (str)**: _path to phenotype information file_
-
-    **gender_reference_path (str)**: _path to gender reference file, which tells which sex a gender code refers to_
-
-    # Returns:
-
-    str: _complemented plink file name_
+    Args:
+        plink (str):
+            path to plink executable
+        input_path (str):
+            input plink-format file name (path without extension)
+        gender_info_path (str):
+            path to the file which contains gender info of all population
+        gender_reference_path (str):
+            Path to gender reference file, which offers reference of gender codings to their meanings.
+            The file should be in .csv/.tsv/.xlsx/.xls format.
+    Returns:
+        list (Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]):
+            list of tuples, where each tuple is (gender, file_path)
+    Raises:
+        ValueError:
+            if gender_info_path is not a valid path
+            if gender_reference_path is not a valid path
+            if gender_info_path is not a csv/tsv/xls(x) file
+            if gender_reference_path is not a csv/tsv/xls(x) file
+    Note:
+        This function is written with polars so it doesn't need multiprocessing optimisation.
     """
-    # Note: This function is merged in `devide pop by gender``
-    return "complemented_file_name"  # placeholder
+
+    logger.info("Reading gender reference file...")
+    match os.path.splitext(gender_reference_path)[-1]:
+        case ".csv":
+            gender_ref_df = pl.read_csv(gender_reference_path, separator=",", infer_schema=False)
+        case ".tsv":
+            gender_ref_df = pl.read_csv(gender_reference_path, separator="\t", infer_schema=False)
+        case ".xlsx":
+            gender_ref_df = pl.read_excel(gender_reference_path, infer_schema_length=0)
+        case _:
+            logger.error("Unsupported file format: %s", os.path.splitext(gender_reference_path))
+            sys.exit(3)
+
+    logger.info("Reading gender info file...")
+    match os.path.splitext(gender_info_path)[-1]:
+        case ".csv":
+            gender_info_df = pl.read_csv(gender_info_path, separator=",", infer_schema=False)
+        case ".tsv":
+            gender_info_df = pl.read_csv(gender_info_path, separator="\t", infer_schema=False)
+        case ".xlsx":
+            gender_info_df = pl.read_excel(gender_info_path, infer_schema_length=0)
+        case _:
+            logger.error("Unsupported file format: %s", os.path.splitext(gender_info_path))
+            sys.exit(3)
+
+    logger.info("rename columns names...")
+
+    # rename "coding" column in `gender_info_df` to "original_gender_coding"
+    pattern = r".*sex.*|.*gender.*"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df = gender_info_df.rename(
+                {col_name: "original_gender_coding"}
+            )
+            break
+    else:
+        logger.error("No column named 'sex' or 'gender' in %s", gender_info_path)
+        sys.exit(1)
+    # rename "id" column in gender_info_df to "iid"
+    pattern = r".*id.*"
+    for col_name in gender_info_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_info_df = gender_info_df.rename(
+                {col_name: "iid"}
+            )
+            break
+    else:
+        logger.error("No column named 'id' in %s", gender_info_path)
+        sys.exit(1)
+
+    # rename "coding" column in `gender_ref_df` to "gender_coding"
+    pattern = r"^.*sex.*$|^.*gender.*$|^coding$|^code$"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df = gender_ref_df.rename(
+                {col_name: "gender_coding"}
+            )
+            break
+    else:
+        logger.error(
+            "No column named 'sex' or 'gender' in %s. Colnames: %s",
+            gender_reference_path,
+            ", ".join(gender_ref_df.columns)
+        )
+        sys.exit(1)
+    # rename "original_coding" in `gender_ref_df` to "original_gender_coding"
+    pattern = r".*original.*"
+    for col_name in gender_ref_df.columns:
+        if re.match(pattern, col_name, re.IGNORECASE):
+            gender_ref_df = gender_ref_df.rename(
+                {col_name: "original_gender_coding"}
+            )
+            break
+    else:
+        logger.error("No column contains 'original' in %s", gender_reference_path)
+        sys.exit(1)
+
+    # merge gender_serial_reference and gender_info
+    # print(gender_info_df)
+    # print(gender_ref_df)
+    merged_gender_info = gender_info_df.join(
+        gender_ref_df,
+        left_on="original_gender_coding",
+        right_on="original_gender_coding",
+        how="inner"
+    ).drop(
+        "original_gender_coding"
+    )
+
+    # merge merged_gender_info and .fam and replace the original one
+    ## determine the separator of .fam
+    with open(f"{input_name}.fam", 'r') as f:
+        first_line = f.readline()
+        if first_line.count("\t") > first_line.count(" "):
+            separator = "\t"
+            logger.info("Detected tab as separator in .fam")
+        else:
+            separator = " "
+            logger.info("Detected space as separator in .fam")
+
+    fam_df = pl.read_csv(f"{input_name}.fam", separator=separator, infer_schema=False)
+    fam_df.columns = ["FID", "IID", "PID", "MID", "gender", "pheno"]
+    merged_fam = fam_df.join(
+        merged_gender_info,
+        left_on="IID",
+        right_on="iid",
+        how="inner"
+    ).select("FID", "IID", "gender_coding")
+    ## write result to a tsv file
+    merged_fam.write_csv(
+        f"{input_name}_gender.tsv",
+        separator="\t",
+        include_header=True,
+    )
+    logger.info("Successfully complemented gender information")
+
+    # complement gender information by plink `--update-sex`
+    output_file_names: list[tuple[Literal["male", "female"]|None, str]] = []
+    plink_cmd = [
+        plink_path,
+        "--bfile", input_name,
+        "--update-sex", f"{input_name}_gender.tsv",
+        "--make-bed",
+        "--out", f"{input_name}_both-gender"
+    ]
+    subprocess.run(
+        plink_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+    logger.info("Successfully complemented gender information by plink")
+    output_file_names.append((None, f"{input_name}_both-gender"))
+
+    return output_file_names
