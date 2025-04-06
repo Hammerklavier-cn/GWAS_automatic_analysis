@@ -221,14 +221,14 @@ def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/s
             descending=True,
             maintain_order=True
         ).with_columns(
-            pl.concat_str([pl.col.SNP, pl.col.phenotype], separator="-").alias("SNP-phenotype"),
+            pl.concat_str([pl.col.SNP, pl.col.phenotype], separator="-").alias("SNP-Phenotype"),
         )
     )
 
     rank_lf.collect().write_excel(f"{save_path}.xlsx")
 
     rank_head_df = rank_lf.head(50).select(
-        "SNP-phenotype", DUPLICATION_FRQ).collect()
+        "SNP-Phenotype", DUPLICATION_FRQ).collect()
 
     fig, ax = plt.subplots()
     fig.set_dpi(150)
@@ -237,7 +237,7 @@ def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/s
     ax.xaxis.set_tick_params(rotation=90)
 
     ax.bar(
-        rank_head_df["SNP-phenotype"],
+        rank_head_df["SNP-Phenotype"],
         rank_head_df[DUPLICATION_FRQ],
         linewidth=1,
         width=0.6,
@@ -248,7 +248,7 @@ def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/s
     ax.set_title(
         "Frequency Rank of Significant Associations of SNP-phenotype Pair")
     """"""
-    ax.set_xlabel("SNP")
+    ax.set_xlabel("SNP-Phenotype")
     ax.set_ylabel("Frequency")
 
     fig.tight_layout()
