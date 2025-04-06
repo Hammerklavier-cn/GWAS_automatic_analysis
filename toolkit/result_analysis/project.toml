@@ -1,0 +1,8 @@
+[project]
+name = "result_analysis"
+version = "0.1.0"
+edition = "3.10"
+
+[bin]
+path = "main.py"
+name = "result_analysis"
