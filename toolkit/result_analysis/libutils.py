@@ -51,12 +51,21 @@ def read_gwas_results(file_paths: Sequence[str]) -> pl.LazyFrame:
 
 
 def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency_rank"):
+    """
+    Calculate the frequency rank of SNPs based on the occurrence frequency of related phenotypes.
+
+    Args:
+        lf (pl.LazyFrame): LazyFrame containing SNP data.
+        save_path (str): Path to save the results.
+
+    Returns:
+        pl.LazyFrame: LazyFrame containing SNP frequency rank data.
+    """
     RELATED_PHENOTYPE_PAIRS = "related phenotype pairs"
     rank_lf = (
         lf
-        .unique()
         .group_by("SNP")
-        .agg("phenotype")
+        .agg("phenotype") # A new column consisted of "{ethnic}-{gender}-{phenotype}" should be aggregated.
         .with_columns(
             pl.col.phenotype.list.len().alias(RELATED_PHENOTYPE_PAIRS),
         )
@@ -70,7 +79,7 @@ def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency
         )
     )
 
-    rank_lf.collect().write_excel(f"{save_path}.xlsx")
+    rank_lf.collect().write_excel(f"{save_path}.xlsx") # More informations should be written.
 
     rank_head_df = rank_lf.head(50).select(
         "SNP", RELATED_PHENOTYPE_PAIRS).collect()
@@ -84,9 +93,6 @@ def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency
     ax.bar(
         rank_head_df["SNP"],
         rank_head_df[RELATED_PHENOTYPE_PAIRS],
-        # color="blue",
-        # alpha=0.7,
-        # edgecolor="black",
         linewidth=1,
         width=0.6,
         align="center",
@@ -103,6 +109,16 @@ def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency
 
 
 def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phenotype_pair_rank"):
+    """
+    Calculate the frequency ranking of SNP's SNP-phenotype pairs based on their occurrence count.
+
+    Args:
+        lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and phenotype data.
+        save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
+
+    Returns:
+        pl.LazyFrame: Processed LazyFrame with SNP-phenotype association frequencies ranked by count.
+    """
     RELATED_PHENOTYPE_PAIRS_FRQ = "related phenotype pairs frequency"
     rank_lf = (
         lf
@@ -155,6 +171,16 @@ def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phen
 
 
 def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethnic_pair_rank"):
+    """
+    Calculate the frequency ranking of SNP-ethnicity pairs based on their occurrence count.
+
+    Args:
+        lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and ethnicity data.
+        save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
+
+    Returns:
+        pl.LazyFrame: Processed LazyFrame with SNP-ethnicity association frequencies ranked by count.
+    """
     RELATED_ETHNICITY_PAIRS_FRQ = "related ethnicity pairs frequency"
     rank_lf = (
         lf
@@ -207,6 +233,19 @@ def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethn
     plt.savefig(f"{save_path}.png", dpi=300)
 
 def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phenotype_duplication_rank"):
+    """
+    Calculate the duplication frequency ranking of SNP-phenotype pairs across different ethnic groups.
+
+    Args:
+        lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP, phenotype, and ethnicity data.
+        save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
+
+    Returns:
+        pl.LazyFrame: Processed LazyFrame with SNP-phenotype pairs ranked by their duplication count across ethnicities.
+
+    Note:
+        The duplication count represents the number of ethnic groups in which the SNP-phenotype association is observed.
+    """
     DUPLICATION_FRQ = "SNP-phenotype duplication count"
     rank_lf = (
         lf
