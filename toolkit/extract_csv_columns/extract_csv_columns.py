@@ -12,8 +12,9 @@ parser.add_argument(
 parser.add_argument(
     "--keep", "-k",
     help="Path to the file which contains columns headers that you want to keep. "
-    "Each line of this file contains only one of the headers' name."
-    "It is ok that the line is part of the target header"
+    "Each line of this file contains only one of the headers' name, with optional information added behind, separated by `\\t`(.tsv) or `,`(default)."
+    "It is ok that the line only contains the id part of the data."
+    "The format of header is expected to be f.$(field_id).$(batch1).$(batch2). The f.eid column will always be kept."
 )
 parser.add_argument(
     "--output", "-o",
@@ -42,13 +43,13 @@ if __name__ == "__main__":
 
     print("Loading headers from target file...")
     with open(args.keep) as reader:
-        target_headers = list(map(lambda x: x.strip(), reader.readlines()))
+        target_headers = list(map(lambda x: x.split("\\t" if args.keep.endswith(".tsv") else ",")[0].strip(), reader.readlines()))
 
     print("Filtering headers")
     kept_headers: list[str] = []
     for original_header in original_headers:
         for target_header in target_headers:
-            pattern = re.compile(rf"^.+({target_header}|id).*$")
+            pattern = re.compile(rf"^f\.({target_header}\.\d+\.\d+|eid)$")
             if re.match(pattern, original_header):
                 kept_headers.append(original_header)
                 break

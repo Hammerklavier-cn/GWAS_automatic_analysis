@@ -1,7 +1,9 @@
-import os, sys, subprocess, logging
+import os
+import sys
+import subprocess
+import logging
 from typing import Literal
 import matplotlib.pyplot as plt
-import matplotlib
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -12,13 +14,14 @@ from myutil import small_tools
 # matplotlib.use('Agg')
 logger = small_tools.create_logger("MainLogger", level=logging.INFO)
 
+
 def missing(
     fm: FileManagement,
     input_name: str,
     save_path_name: str,
     ethnic: str | None = None,
     gender: Literal["Men", "Women"] | None = None
-    ) -> None:
+) -> None:
     """
     Visualise missing data proportions.
 
@@ -42,7 +45,8 @@ def missing(
 
     **${save_path_name}_lmiss_visualisation.png**: _Visualisation of missingness of SNPs._
     """
-    logger.info("Calculating proportions of missing data of %s %s data set", ethnic, gender)
+    logger.info(
+        "Calculating proportions of missing data of %s %s data set", ethnic, gender)
     try:
         command = [
             fm.plink,
@@ -57,7 +61,8 @@ def missing(
             check=True
         )
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error calculating proportions of missing data plink: {e}")
+        logger.error(
+            f"Error calculating proportions of missing data plink: {e}")
         sys.exit(2)
     logger.info("Finished Calculation")
 
@@ -65,29 +70,35 @@ def missing(
 
     # Visualise missingness of individuals.
     logger.info("Visualising missingness of individuals")
-    imiss_df = pd.read_csv(f"{input_name}.imiss", sep=r"\s+", usecols=["F_MISS"])
+    imiss_df = pd.read_csv(f"{input_name}.imiss",
+                           sep=r"\s+", usecols=["F_MISS"])
 
     plt.hist(imiss_df, density=True, bins=20)
-    ## density=True makes bin's raw count divided by the total number of counts and the bin width,
-    ## so that the area under the histogram integrates to 1.
-    plt.title(f"Histogram of SNP missingness per individual from {ethnic} {gender} data set")
+    # density=True makes bin's raw count divided by the total number of counts and the bin width,
+    # so that the area under the histogram integrates to 1.
+    plt.title(f"Histogram of SNP missingness per individual from {
+              ethnic} {gender} data set")
     plt.xlabel("Individuals' SNP missing rate")
     plt.ylabel("Frequency / Intercept")
-    plt.tight_layout()      # Remove whitespace and avoid overlap around the plot.
+    # Remove whitespace and avoid overlap around the plot.
+    plt.tight_layout()
     plt.savefig(f"{save_path_name}_imiss.png", dpi=300)
-    ## clear figure to prevent conflicts.
+    # clear figure to prevent conflicts.
     plt.clf()
 
     # Visualise missingness of SNPs.
-    lmiss_df = pd.read_csv(f"{input_name}.lmiss", engine="c", sep=r"\s+", usecols=["F_MISS"])
+    lmiss_df = pd.read_csv(f"{input_name}.lmiss",
+                           engine="c", sep=r"\s+", usecols=["F_MISS"])
 
     plt.hist(lmiss_df, density=True, bins=20)
-    plt.title(f"Histogram of individual missingness per SNP from {ethnic} {gender} data set")
+    plt.title(f"Histogram of individual missingness per SNP from {
+              ethnic} {gender} data set")
     plt.xlabel("SNPs' individual missing rate")
     plt.ylabel("Frequency / Intercept")
     plt.tight_layout()
     plt.savefig(f"{save_path_name}_lmiss.png", dpi=300)
     plt.clf()
+
 
 def hardy_weinberg(
     fm: FileManagement,
@@ -129,7 +140,6 @@ def hardy_weinberg(
         return
     logger.info("Finished Calculation")
 
-
     # Draw histogram.
     hwe = pd.read_csv(f"{input_name}.hwe", sep=r"\s+", usecols=["P"])
     plt.hist(hwe, bins=10)
@@ -150,6 +160,7 @@ def hardy_weinberg(
     plt.savefig(f"{save_path_name}_zoomhwe.png", dpi=300)
     '''
     plt.clf()
+
 
 def minor_allele_frequency(
     fm: FileManagement,
@@ -191,10 +202,10 @@ def minor_allele_frequency(
     logger.info("Finished Calculation")
 
     freq_file = pd.read_csv(
-        f"{input_name}.frq", sep=r"\s+", engine="c",usecols=["MAF"]
+        f"{input_name}.frq", sep=r"\s+", engine="c", usecols=["MAF"]
     )
 
-    plt.hist(freq_file["MAF"],bins=20)
+    plt.hist(freq_file["MAF"], bins=20)
     plt.title(f"MAF check of {ethnic} {gender} data set")
     plt.tight_layout()
     plt.savefig(f"{save_path_name}.png", dpi=300)
@@ -214,11 +225,12 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
 
         logger.debug("读取文件")
         # calculate threshold
-        a_m = pd.read_csv(file_path, engine="c", sep=r"\s+", usecols=["SNP", "P"])
+        a_m = pd.read_csv(file_path, engine="c",
+                          sep=r"\s+", usecols=["SNP", "P"])
         a_m["ID"] = list(range(a_m.shape[0]))
         threshold = alpha / a_m.shape[0]
 
-        colors = list(range(a_m.shape[0]))
+        # colors = list(range(a_m.shape[0]))
         x = a_m["ID"]
         y = -np.log10(a_m["P"])
 
@@ -226,20 +238,21 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
         # print(t_pd)
 
         sns.set_theme("paper", style="whitegrid")
-        ## 曼哈顿图 (Manhattan Plot)
+        # 曼哈顿图 (Manhattan Plot)
         logger.debug("开始绘制曼哈顿图")
-        #- plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
+        # - plt.style.use('ggplot')  # 设置类似 Seaborn 的样式
         plt.figure(figsize=(10, 5), dpi=300)
         plt.scatter(x, y, s=2, c=y, cmap='viridis', marker="o")
-        ### 添加水平线
+        # 添加水平线
         plt.axhline(y=-np.log10(threshold), color='red', linestyle='--')
 
         # 添加标注
         for _, row_ in t_pd.iterrows():
             plt.text(row_["ID"], -np.log10(row_["P"]), row_["SNP"],
-                    rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
+                     rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
 
-        plt.title(f"Manhattan Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
+        plt.title(f"Manhattan Plot of Assoc Result of {
+                  ethnic} {gender} on {phenotype}")
         plt.colorbar(label=r'$-\log_{10}P-value$')
 
         # 调整边界
@@ -248,17 +261,19 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
         plt.savefig(f"{output_path}_Manhattan.png", dpi=600)
         plt.close()
 
-        ## QQ图 (QQ-Plot)
+        # QQ图 (QQ-Plot)
         logger.debug("开始绘制QQ图")
         sns.set_theme("paper", style="whitegrid")
         plt.figure(figsize=(5, 5), dpi=300)
         # plt.style.use('dark_background')  # 设置类似 Seaborn 的黑色背景样式
 
         # 理论 -log10(P) 值
-        x = np.linspace(0.5 / a_m.shape[0], 1 - 0.5 / a_m.shape[0], a_m.shape[0])
+        x = np.linspace(0.5 / a_m.shape[0], 1 -
+                        0.5 / a_m.shape[0], a_m.shape[0])
         sorted_p_values = -np.log10(a_m["P"].sort_values(ascending=True))
 
-        plt.scatter(-np.log10(x), sorted_p_values, marker="^", facecolors="none", edgecolors="b")
+        plt.scatter(-np.log10(x), sorted_p_values, marker="^",
+                    facecolors="none", edgecolors="b")
 
         # 添加 y=x 的参考线
         max_val = max(-np.log10(x).max(), sorted_p_values.max())
@@ -266,10 +281,12 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
 
         plt.xlabel(r"Theoretical $-\log_{10}P$ Value")  # r 表示原始字符串，防止转义字符的问题
         plt.ylabel(r"Observed $-\log_{10}P$ Value")
-        plt.title(f"QQ-Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
+        plt.title(
+            f"QQ-Plot of Assoc Result of {ethnic} {gender} on {phenotype}")
         plt.tight_layout()
         plt.savefig(f"{output_path}_QQ.png", dpi=600)
         plt.close()
-        logger.debug(f'已输出至："{file_name}_QQ.png" 和 "{file_name}_Manhattan.png"中')
+        logger.debug(f'已输出至："{file_name}_QQ.png" 和 "{
+                     file_name}_Manhattan.png"中')
     except Exception as e:
         logger.error(f"Error: {e}")
