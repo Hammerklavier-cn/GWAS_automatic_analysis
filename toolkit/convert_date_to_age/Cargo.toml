@@ -1,0 +1,18 @@
+[package]
+name = "convert_date_to_age"
+version = "0.1.0"
+edition = "2024"
+description = "Convert date to candidates' age. As date of birth is not given by biobank, it will be calculated from year and month of birth"
+
+[dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
+polars = { version = "=0.47.0", features = [
+    "lazy",
+    "avx512",
+    "csv",
+    "strings",
+    "concat_str",
+    "dtype-full",
+    "timezones",
+] }
+anyhow = "1.0.98"
