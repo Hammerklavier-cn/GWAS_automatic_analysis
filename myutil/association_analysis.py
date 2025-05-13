@@ -158,7 +158,7 @@ def result_filter(
                 threshold = alpha
 
         filtered_df = assoc_df.filter(
-            pl.col.P <= threshold
+            pl.col.P < threshold
         ).with_columns(
             gender = pl.lit(gender),
             ethnic = pl.lit(ethnic),
@@ -273,8 +273,8 @@ def multidimensional_scaling(
         "--out", f"{input_name}_{phenotype_name}",
     ]
     subprocess.run(
-        command, 
-        stdout=subprocess.DEVNULL, 
+        command,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=True
     )
@@ -290,5 +290,5 @@ def multidimensional_scaling(
         infer_schema=False,
         null_values="NA"
     )
-    
+
     pass

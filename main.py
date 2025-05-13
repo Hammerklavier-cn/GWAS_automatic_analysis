@@ -5,7 +5,7 @@
 """
 
 __authors__ = ["hammerklavier", "akka2318", "Ciztro"]
-__version__ = "0.1.1-rc3"
+__version__ = "0.1.1"
 __description__ = "Automatic single and multiple SNP -- phenotype association analysis python script."
 
 # import neccesary libraries
@@ -277,7 +277,7 @@ if __name__ == "__main__":
                     output[2],
                     f"{output[2]}_maf",
                     output[0], output[1],
-                    maf_threshold=0.005
+                    maf_threshold=0.01
                 )
             )
         output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
