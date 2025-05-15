@@ -1,0 +1,9 @@
+[package]
+name = "fm"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+readme.workspace = true
+
+[dependencies]
