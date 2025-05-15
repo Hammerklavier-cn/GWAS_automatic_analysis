@@ -1,32 +1,34 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use clap::Parser;
-use fm::{VcfFile, VcfFileBuilder};
+use filter_snp::filter_snps;
+use fm::{File, VcfFile};
 
 #[derive(Parser, Debug, Clone)]
 struct Args {
     #[arg(
         short,
         long,
-        value_delimiter = ',',
-        help = "Paths of input files, each of which should end with either .vcf(.gz) or .bed, all having the same extension."
+        help = "Path of input file, which should end with either .vcf(.gz) or .bed."
     )]
-    input: Vec<PathBuf>,
+    input: PathBuf,
 
     #[arg(
         short,
-        long,
+        long = "snps",
+        alias = "extract",
         help = "File containing positive SNPs. Each line should contain a SNP ID."
     )]
-    keep: PathBuf,
+    snps: PathBuf,
 
-    #[arg(short, long, help = "Path of plink executable")]
-    plink_path: Option<PathBuf>,
+    #[arg(short, long, help = "Path of vcftools executable")]
+    vcftools_path: Option<PathBuf>,
 
     #[arg(
         short,
         long,
-        help = "Path of output file, which should end with either .vcf(.gz) or .bed."
+        help = "Path of output file, which contains no extension. A `.vcf` extension will be automatically generated."
     )]
     output: PathBuf,
 }
@@ -35,35 +37,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     println!("Detect args: {:?}", args);
 
-    // Detect plink
-    match args.plink_path {
+    // Detect vcftools
+    match args.vcftools_path {
         Some(ref path) => {
             if path.exists() {
                 unsafe {
-                    std::env::set_var("PLINK_PATH", path.to_str().unwrap());
+                    std::env::set_var("VCFTOOLS_PATH", path.to_str().unwrap());
                 }
             } else {
-                return Err(format!("plink not found at {}", path.display()).into());
+                return Err(format!("vcftools not found at {}", path.display()).into());
             }
         }
         None => {
-            match std::env::var("PLINK_PATH") {
+            match std::env::var("VCFTOOLS_PATH") {
                 Ok(path_string) => {
                     if !PathBuf::from_str(&path_string)?.exists() {
-                        return Err(format!("plink not found at {}", path_string).into());
+                        return Err(format!("vcftools not found at {}", path_string).into());
                     }
                 }
                 Err(_) => {
-                    // Check if plink is in PATH
-                    let plink_path = which::which(
+                    // Check if vcftools is in PATH
+                    let vcftools_path = which::which(
                         if cfg!(target_os = "windows") {
-                            "plink.exe"
+                            "vcftools.exe"
                         } else {
-                            "plink"                        }
+                            "vcftools"
+                        }
                     )
-                        .map_err(|_| "plink not found in PATH. Add it to PATH, set PLINK_PATH environment variable or specify plink path with --plink-path")?;
+                        .map_err(|_| "vcftools not found in PATH. Add it to PATH, set VCFTOOLS_PATH environment variable or specify vcftools path with --vcftools-path")?;
                     unsafe {
-                        std::env::set_var("PLINK_PATH", plink_path);
+                        std::env::set_var("VCFTOOLS_PATH", vcftools_path);
                     }
                 }
             }
@@ -71,11 +74,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Concatenate input files
-    let mut vcf_files = Vec::new();
-    for input in args.input {
-        let vcf_file = VcfFile::builder(&input).will_be_deleted(false).build();
-        vcf_files.push(vcf_file);
-    }
+    let vcf_file = VcfFile::builder(&args.input).will_be_deleted(false).build();
 
-    Err("Not finished".into())
+    let mut result_vcf_file = filter_snps(vcf_file, &args.snps, &args.output)?;
+
+    result_vcf_file.set_will_be_deleted(false);
+
+    println!("Result has been saved in {}", (*result_vcf_file).display());
+
+    Ok(())
 }

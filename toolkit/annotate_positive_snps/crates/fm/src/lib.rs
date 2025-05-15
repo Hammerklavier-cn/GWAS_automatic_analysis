@@ -9,8 +9,10 @@ pub enum FileType {
     Bed,
 }
 
+#[allow(drop_bounds)]
 pub trait File: Deref + Drop + Any {
     fn get_will_be_deleted(&self) -> bool;
+    fn set_will_be_deleted(&mut self, will_be_deleted: bool);
     fn type_of(&self) -> FileType;
     fn get_path(&self) -> &Path;
 }
@@ -29,14 +31,11 @@ impl VcfFile {
     pub fn builder(path: &Path) -> VcfFileBuilder {
         VcfFileBuilder::new(path)
     }
-
-    // pub fn set_will_be_deleted(&mut self, will_be_deleted: bool) {
-    //     self.will_be_deleted = will_be_deleted;
-    // }
 }
 impl Drop for VcfFile {
     fn drop(&mut self) {
         if self.get_will_be_deleted() {
+            println!("Delete temp file {}", self.get_path().display());
             std::fs::remove_file(&self.path).unwrap();
         }
     }
@@ -56,6 +55,9 @@ impl File for VcfFile {
     }
     fn get_path(&self) -> &Path {
         &self.path
+    }
+    fn set_will_be_deleted(&mut self, will_be_deleted: bool) {
+        self.will_be_deleted = will_be_deleted;
     }
 }
 
