@@ -1,26 +1,39 @@
-use std::{ops::Deref, path::PathBuf};
+use std::{
+    any::Any,
+    ops::Deref,
+    path::{Path, PathBuf},
+};
 
-pub trait File: Deref + Drop {
+pub enum FileType {
+    Vcf,
+    Bed,
+}
+
+pub trait File: Deref + Drop + Any {
     fn get_will_be_deleted(&self) -> bool;
+    fn type_of(&self) -> FileType;
+    fn get_path(&self) -> &Path;
 }
 
 pub struct VcfFile {
     path: PathBuf,
     will_be_deleted: bool,
 }
-
 impl VcfFile {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: &Path) -> Self {
         VcfFile {
-            path,
+            path: path.to_path_buf(),
             will_be_deleted: false,
         }
     }
-    pub fn builder(path: PathBuf) -> VcfFileBuilder {
+    pub fn builder(path: &Path) -> VcfFileBuilder {
         VcfFileBuilder::new(path)
     }
-}
 
+    // pub fn set_will_be_deleted(&mut self, will_be_deleted: bool) {
+    //     self.will_be_deleted = will_be_deleted;
+    // }
+}
 impl Drop for VcfFile {
     fn drop(&mut self) {
         if self.get_will_be_deleted() {
@@ -28,17 +41,21 @@ impl Drop for VcfFile {
         }
     }
 }
-
 impl Deref for VcfFile {
     type Target = PathBuf;
     fn deref(&self) -> &Self::Target {
         &self.path
     }
 }
-
 impl File for VcfFile {
     fn get_will_be_deleted(&self) -> bool {
         self.will_be_deleted
+    }
+    fn type_of(&self) -> FileType {
+        FileType::Vcf
+    }
+    fn get_path(&self) -> &Path {
+        &self.path
     }
 }
 
@@ -46,11 +63,10 @@ pub struct VcfFileBuilder {
     path: PathBuf,
     will_be_deleted: bool,
 }
-
 impl VcfFileBuilder {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: &Path) -> Self {
         VcfFileBuilder {
-            path,
+            path: path.to_path_buf(),
             will_be_deleted: false,
         }
     }
