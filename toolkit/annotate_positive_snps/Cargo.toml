@@ -1,0 +1,26 @@
+[package]
+name = "annotate_positive_snps"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+readme.workspace = true
+
+[dependencies]
+clap.workspace = true
+
+[workspace]
+resolver = "2"
+members = ["crates/filter-snp", "crates/fm"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Hammerklavier-cn"]
+edition = "2024"
+description = "A tool to extract designated SNPs from a .bed or .vcf file and annotate SNPs' effects"
+readme = "README.md"
+
+[workspace.dependencies]
+clap = { version = "4.5.38", features = ["derive"] }
+fm = { path = "crates/fm" }
+which = { version = "7.0.3" }

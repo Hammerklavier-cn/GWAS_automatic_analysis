@@ -1,0 +1,12 @@
+[package]
+name = "filter-snp"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+readme.workspace = true
+
+[dependencies]
+clap.workspace = true
+fm.workspace = true
+which.workspace = true
