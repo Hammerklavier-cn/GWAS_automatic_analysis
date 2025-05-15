@@ -106,6 +106,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# rust
+Cargo.lock
+
 # plink files
 
 # phenotype files
