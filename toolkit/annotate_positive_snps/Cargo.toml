@@ -24,3 +24,4 @@ readme = "README.md"
 clap = { version = "4.5.38", features = ["derive"] }
 fm = { path = "crates/fm" }
 which = { version = "7.0.3" }
+anyhow = "1.0"
