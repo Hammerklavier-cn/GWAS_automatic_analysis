@@ -133,6 +133,8 @@ storage/
 /testsuite/STAB2.map
 /testsuite/STAB2.nosex
 /testsuite/STAB2.vcf.gz
+*.vcf
+*.html
 
 # run files
 /run/*
