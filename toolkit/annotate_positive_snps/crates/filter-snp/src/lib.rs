@@ -62,7 +62,10 @@ pub fn filter_snps<T: fm::File + 'static>(
         .output()
         .map_err(|e| format!("Failed to execute plink: {}", e))?;
 
-    std::io::stderr().write_all(&output.stderr)?;
+    if !output.stderr.is_empty() {
+        std::io::stderr().write_all(b"vcftools ERROR:")?;
+        std::io::stderr().write_all(&output.stderr)?;
+    }
 
     if true ^ output.status.success() {
         return Err("Failed to extract snps from given vcf file!".into());
