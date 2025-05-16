@@ -11,11 +11,7 @@ clap.workspace = true
 
 [workspace]
 resolver = "2"
-<<<<<<< HEAD
-members = [ "crates/annotation","crates/filter-snp", "crates/fm"]
-=======
-members = ["crates/filter-snp", "crates/fm"]
->>>>>>> origin/main
+members = ["crates/annotation", "crates/filter-snp", "crates/fm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -25,10 +21,8 @@ description = "A tool to extract designated SNPs from a .bed or .vcf file and an
 readme = "README.md"
 
 [workspace.dependencies]
+
+anyhow = "1.0"
 clap = { version = "4.5.38", features = ["derive"] }
 fm = { path = "crates/fm" }
 which = { version = "7.0.3" }
-<<<<<<< HEAD
-anyhow = "1.0"
-=======
->>>>>>> origin/main
