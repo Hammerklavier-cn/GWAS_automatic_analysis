@@ -11,7 +11,11 @@ clap.workspace = true
 
 [workspace]
 resolver = "2"
+<<<<<<< HEAD
 members = [ "crates/annotation","crates/filter-snp", "crates/fm"]
+=======
+members = ["crates/filter-snp", "crates/fm"]
+>>>>>>> origin/main
 
 [workspace.package]
 version = "0.1.0"
@@ -24,4 +28,7 @@ readme = "README.md"
 clap = { version = "4.5.38", features = ["derive"] }
 fm = { path = "crates/fm" }
 which = { version = "7.0.3" }
+<<<<<<< HEAD
 anyhow = "1.0"
+=======
+>>>>>>> origin/main

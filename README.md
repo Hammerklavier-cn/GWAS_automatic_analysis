@@ -76,8 +76,6 @@ Usage to be seen by running `python3 main.py -h`.
 
 ## 注 -- Post Script
 
-项目尚未完成，请不要使用。
-
-The project is still unfinished and not for use now.
+toolkit 内容正在开发中，部分组件尚未实现完全。
 
 ## 使用方法 -- Usage
