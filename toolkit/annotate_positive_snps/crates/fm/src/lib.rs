@@ -31,6 +31,12 @@ impl VcfFile {
     pub fn builder(path: &Path) -> VcfFileBuilder {
         VcfFileBuilder::new(path)
     }
+
+    pub fn write_into<R: std::io::Read>(&self, reader: &mut R) -> std::io::Result<()> {
+        let mut file_writer = std::fs::File::create(&self.path)?;
+        std::io::copy(reader, &mut file_writer)?;
+        Ok(())
+    }
 }
 impl Drop for VcfFile {
     fn drop(&mut self) {
