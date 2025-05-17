@@ -21,7 +21,7 @@ QASSOC_COLUMNS = {
 NULL_VALUES = ["NA", "Na", "na", "NAN", "NaN", "Nan", "nan", "NULL", "null"]
 
 
-def read_gwas_results(file_paths: Sequence[str]) -> pl.LazyFrame:
+def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
     results_df = pl.DataFrame(
         schema=QASSOC_COLUMNS,
     ).with_columns(
