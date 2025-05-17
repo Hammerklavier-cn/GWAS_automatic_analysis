@@ -49,6 +49,21 @@ def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
 
     return results_lf
 
+def read_reference_data(file_path: str) -> pl.LazyFrame:
+    """read phenotype reference data"""
+    lf = pl.scan_csv(
+        file_path,
+        separator="\t" if file_path.endswith(".tsv") else ",",
+        has_header=False,
+        null_values=NULL_VALUES,
+        schema={
+            "field ID": pl.Int64,
+            "phenotype": pl.String,
+        }
+    )
+
+    return lf
+
 
 def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency_rank"):
     """
