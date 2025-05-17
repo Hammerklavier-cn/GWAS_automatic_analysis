@@ -47,6 +47,13 @@ def get_parser():
     # )
 
     _ = parser.add_argument(
+        "--phenotype-reference", "--reference",
+        type=str,
+        required=True,
+        help="Path to the phenotype reference file, which tells what the phenotype codings refers to."
+    )
+
+    _ = parser.add_argument(
         "--output", "-o",
         type=str,
         default="results",
