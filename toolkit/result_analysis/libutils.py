@@ -39,8 +39,8 @@ def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
         if result_df.is_empty():
             continue
         elif result_df.columns != list(QASSOC_COLUMNS.keys()):
-            print(f"Skipping {file_path} due to mismatched columns: Expected {
-                  QASSOC_COLUMNS.keys()}, got {result_df.columns}")
+            print(f"Skipping {file_path} due to mismatched columns: "
+                  "Expected {QASSOC_COLUMNS.keys()}, got {result_df.columns}")
             continue
 
         results_df = results_df.vstack(result_df)
