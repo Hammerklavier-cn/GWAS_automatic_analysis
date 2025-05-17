@@ -5,18 +5,18 @@ import matplotlib.pyplot as plt
 from typing import Sequence
 
 QASSOC_COLUMNS = {
-    "CHR": str,
-    "SNP": str,
-    "BP": int,
-    "NMISS": int,
-    "BETA": float,
-    "SE": float,
-    "R2": float,
-    "T": float,
-    "P": float,
-    "gender": str,
-    "ethnic": str,
-    "phenotype": str
+    "CHR": pl.String,
+    "SNP": pl.String,
+    "BP": pl.Int64,
+    "NMISS": pl.Int64,
+    "BETA": pl.Float64,
+    "SE": pl.Float64,
+    "R2": pl.Float64,
+    "T": pl.Float64,
+    "P": pl.Float64,
+    "gender": pl.String,
+    "ethnic": pl.String,
+    "phenotype": pl.String
 }
 NULL_VALUES = ["NA", "Na", "na", "NAN", "NaN", "Nan", "nan", "NULL", "null"]
 
