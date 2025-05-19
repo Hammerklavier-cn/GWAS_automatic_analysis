@@ -11,7 +11,12 @@ clap.workspace = true
 
 [workspace]
 resolver = "2"
-members = ["crates/annotation", "crates/filter-snp", "crates/fm"]
+members = [
+    "crates/annotation",
+    "crates/filter-snp",
+    "crates/fm",
+    "crates/summarization",
+]
 
 [workspace.package]
 version = "0.1.0"

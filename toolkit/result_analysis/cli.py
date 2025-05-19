@@ -9,6 +9,9 @@ class AnalysisOption(Enum):
     SNP_PHENOTYPE_PAIR_RANK = auto()
     SNP_ETHNICITY_PAIR_RANK = auto()
     SNP_PHENOTYPE_DUPLICATION_RANK = auto()
+    PHENOTYPE_FREQUENCY_RANK = auto()
+    PHENOTYPE_SNP_PAIR_RANK = auto()
+    PHENOTYPE_ETHNICITY_PAIR_RANK = auto()
     ALL = auto()
     pass
 
@@ -38,13 +41,12 @@ def get_parser():
         help='List of input files'
     )
 
-    # _ = parser.add_argument(
-    #     "--output-form",
-    #     nargs="+",
-    #     choices=[option.name for option in OutputForm],
-    #     type=lambda x: arg_2_enum_name(OutputForm, x, parser),
-    #     help="Output format"
-    # )
+    _ = parser.add_argument(
+        "--phenotype-reference", "--reference",
+        type=str,
+        required=True,
+        help="Path to the phenotype reference file, which tells what the phenotype codings refers to."
+    )
 
     _ = parser.add_argument(
         "--output", "-o",
@@ -65,7 +67,7 @@ def get_parser():
     _ = parser.add_argument(
         "--version", "-V",
         action="version",
-        version="%(prog)s 0.1.0"
+        version="%(prog)s 0.2.0"
     )
 
     parser_check(parser)

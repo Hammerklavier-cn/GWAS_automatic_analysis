@@ -1,31 +1,61 @@
+from enum import Enum
 import polars as pl
 import matplotlib.pyplot as plt
 # import seaborn as sns
 
 from typing import Sequence
 
-QASSOC_COLUMNS = {
-    "CHR": str,
-    "SNP": str,
-    "BP": int,
-    "NMISS": int,
-    "BETA": float,
-    "SE": float,
-    "R2": float,
-    "T": float,
-    "P": float,
-    "gender": str,
-    "ethnic": str,
-    "phenotype": str
+
+class QassocColumns(Enum):
+    CHR = "CHR"
+    SNP = "SNP"
+    BP = "BP"
+    NMISS = "NMISS"
+    BETA = "BETA"
+    SE = "SE"
+    R2 = "R2"
+    T = "T"
+    P = "P"
+    GENDER = "gender"
+    ETHNIC = "ethnic"
+    PHENOTYPE = "phenotype"
+
+
+QASSOC_COLUMNS_SCHEMA = {
+    QassocColumns.CHR.value: pl.String,
+    QassocColumns.SNP.value: pl.String,
+    QassocColumns.BP.value: pl.Int64,
+    QassocColumns.NMISS.value: pl.Int64,
+    QassocColumns.BETA.value: pl.Float64,
+    QassocColumns.SE.value: pl.Float64,
+    QassocColumns.R2.value: pl.Float64,
+    QassocColumns.T.value: pl.Float64,
+    QassocColumns.P.value: pl.Float64,
+    QassocColumns.GENDER.value: pl.String,
+    QassocColumns.ETHNIC.value: pl.String,
+    QassocColumns.PHENOTYPE.value: pl.String
 }
+
+
+class ReferenceColumns(Enum):
+    FIELD_ID = "field_id"
+    PHENOTYPE = "phenotype_name"
+
+
+REFERENCE_COLUMNS_SCHEMA = {
+    ReferenceColumns.FIELD_ID.value: pl.String,
+    ReferenceColumns.PHENOTYPE.value: pl.String
+}
+
 NULL_VALUES = ["NA", "Na", "na", "NAN", "NaN", "Nan", "nan", "NULL", "null"]
 
 
-def read_gwas_results(file_paths: Sequence[str]) -> pl.LazyFrame:
+def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
     results_df = pl.DataFrame(
-        schema=QASSOC_COLUMNS,
+        schema=QASSOC_COLUMNS_SCHEMA,
     ).with_columns(
-        pl.col.P.cast(pl.Float64, strict=False).drop_nulls()
+        pl.col(QassocColumns.P.value).cast(
+            pl.Float64, strict=False).drop_nulls()
     )
 
     for file_path in file_paths:
@@ -34,13 +64,13 @@ def read_gwas_results(file_paths: Sequence[str]) -> pl.LazyFrame:
             separator="\t" if file_path.endswith(".tsv") else ",",
             has_header=True,
             null_values=NULL_VALUES,
-            schema_overrides=QASSOC_COLUMNS
+            schema_overrides=QASSOC_COLUMNS_SCHEMA
         )
         if result_df.is_empty():
             continue
-        elif result_df.columns != list(QASSOC_COLUMNS.keys()):
-            print(f"Skipping {file_path} due to mismatched columns: Expected {
-                  QASSOC_COLUMNS.keys()}, got {result_df.columns}")
+        elif result_df.columns != list(QASSOC_COLUMNS_SCHEMA.keys()):
+            print(f"Skipping {file_path} due to mismatched columns: "
+                  "Expected {QASSOC_COLUMNS.keys()}, got {result_df.columns}")
             continue
 
         results_df = results_df.vstack(result_df)
@@ -50,39 +80,76 @@ def read_gwas_results(file_paths: Sequence[str]) -> pl.LazyFrame:
     return results_lf
 
 
-def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency_rank"):
+def read_reference_data(file_path: str) -> pl.LazyFrame:
+    """read phenotype reference data"""
+    lf = pl.scan_csv(
+        file_path,
+        separator="\t" if file_path.endswith(".tsv") else ",",
+        has_header=False,
+        null_values=NULL_VALUES,
+        schema=REFERENCE_COLUMNS_SCHEMA
+    )
+
+    return lf
+
+
+def snp_frequency_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/snp_frequency_rank"
+) -> pl.LazyFrame:
     """
     Calculate the frequency rank of SNPs based on the occurrence frequency of related phenotypes.
 
     Args:
-        lf (pl.LazyFrame): LazyFrame containing SNP data.
+        result_lf (pl.LazyFrame): LazyFrame containing SNP data.
+        reference_lf (pl.LazyFrame): LazyFrame containing phenotype reference data.
         save_path (str): Path to save the results.
 
     Returns:
         pl.LazyFrame: LazyFrame containing SNP frequency rank data.
     """
-    RELATED_PHENOTYPE_PAIRS = "related phenotype pairs"
+    RELATED_PHENO_OCCUR_FREQ = "related phenotype occurrence frequency"
+
+    result_lf = result_lf.with_columns(
+        field_id=pl.col(QassocColumns.PHENOTYPE.value).str.split(".").list.get(1)
+    ).drop(QassocColumns.PHENOTYPE.value)
+
     rank_lf = (
-        lf
-        .group_by("SNP")
-        .agg("phenotype") # A new column consisted of "{ethnic}-{gender}-{phenotype}" should be aggregated.
-        .with_columns(
-            pl.col.phenotype.list.len().alias(RELATED_PHENOTYPE_PAIRS),
+        result_lf.join(
+            reference_lf,
+            left_on="field_id",
+            right_on=ReferenceColumns.FIELD_ID.value
         )
-        .rename(
-            {"phenotype": "phenotypes"}
+        .unique()
+        .with_columns(
+            pl.concat_str(
+                [
+                    pl.col(QassocColumns.ETHNIC.value),
+                    pl.col(QassocColumns.GENDER.value),
+                    pl.col(ReferenceColumns.PHENOTYPE.value)
+                ],
+                separator="-"
+            )
+                .alias("$(ethnic)-$(gender)-$(phenotype)")
+        )
+        .group_by(QassocColumns.SNP.value)
+        .agg(
+            pl.col("$(ethnic)-$(gender)-$(phenotype)"),
+            pl.col("$(ethnic)-$(gender)-$(phenotype)").count().alias(RELATED_PHENO_OCCUR_FREQ)
         )
         .sort(
-            by=RELATED_PHENOTYPE_PAIRS,
+            by=RELATED_PHENO_OCCUR_FREQ,
             descending=True,
             maintain_order=True
         )
     )
 
-    rank_lf.collect().write_excel(f"{save_path}.xlsx") # More informations should be written.
+    rank_lf.collect().write_excel(f"{save_path}.xlsx")
 
     rank_head_df = rank_lf.head(50).select(
-        "SNP", RELATED_PHENOTYPE_PAIRS).collect()
+        QassocColumns.SNP.value, RELATED_PHENO_OCCUR_FREQ).collect()
 
     fig, ax = plt.subplots()
     fig.set_dpi(150)
@@ -91,13 +158,16 @@ def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency
     ax.xaxis.set_tick_params(rotation=90)
 
     ax.bar(
-        rank_head_df["SNP"],
-        rank_head_df[RELATED_PHENOTYPE_PAIRS],
+        rank_head_df[QassocColumns.SNP.value],
+        rank_head_df[RELATED_PHENO_OCCUR_FREQ],
         linewidth=1,
         width=0.6,
         align="center",
         label="Frequency Rank"
     )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
 
     ax.set_title(
         "Frequency Rank of SNPs' Significant Association with Phenotypes")
@@ -107,32 +177,64 @@ def snp_frequency_rank(lf: pl.LazyFrame, save_path: str = "results/snp_frequency
     fig.tight_layout()
     plt.savefig(f"{save_path}.png", dpi=300)
 
+    return rank_lf
 
-def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phenotype_pair_rank"):
+
+def snp_phenotype_pair_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/snp_phenotype_pair_rank"
+) -> pl.LazyFrame:
     """
-    Calculate the frequency ranking of SNP's SNP-phenotype pairs based on their occurrence count.
+    Calculate the frequency ranking of SNPs' SNP-phenotype pairs (no duplication).
 
     Args:
-        lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and phenotype data.
+        result_lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and phenotype data.
+        reference_lf (pl.LazyFrame): LazyFrame containing phenotype reference data.
         save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
 
     Returns:
-        pl.LazyFrame: Processed LazyFrame with SNP-phenotype association frequencies ranked by count.
+        pl.LazyFrame: Processed LazyFrame with SNPs' SNP-phenotype association frequencies ranked by count.
     """
-    RELATED_PHENOTYPE_PAIRS_FRQ = "related phenotype pairs frequency"
+    RELATED_PHENOTYPE_PAIRS_FRQ = "SNPs' phenotype pairs frequency"
+
+    result_lf = result_lf.with_columns(
+        field_id=pl.col(QassocColumns.PHENOTYPE.value).str.split(".").list.get(1)
+    ).drop(QassocColumns.PHENOTYPE.value)
+
     rank_lf = (
-        lf
-        .unique()
-        .group_by("SNP")
-        .agg("phenotype")
-        .with_columns(
-            pl.col.phenotype.list.unique(),
+        result_lf.join(
+            reference_lf,
+            left_on="field_id",
+            right_on=ReferenceColumns.FIELD_ID.value
         )
         .with_columns(
-            pl.col.phenotype.list.len().alias(RELATED_PHENOTYPE_PAIRS_FRQ),
+            pl.concat_str(
+                [
+                    pl.col(QassocColumns.ETHNIC.value),
+                    pl.col(QassocColumns.GENDER.value),
+                ],
+                separator="-"
+            )
+                .alias("$(ethnic)-$(gender)")
         )
-        .rename(
-            {"phenotype": "phenotypes"}
+        .group_by(QassocColumns.SNP.value, ReferenceColumns.PHENOTYPE.value)
+        .agg(pl.col("$(ethnic)-$(gender)").alias("[$($(ethnic)-$(gender))]"))
+        .with_columns(
+            pl.concat_list(ReferenceColumns.PHENOTYPE.value)
+        )
+        .with_columns(
+            pl.concat_list(
+                pl.col("[$($(ethnic)-$(gender))]"),
+                pl.col(ReferenceColumns.PHENOTYPE.value)
+            )
+                .alias("[$($(ethnic)-$(gender),), $(phenotype)]")
+        )
+        .group_by(QassocColumns.SNP.value)
+        .agg(
+            pl.col("[$($(ethnic)-$(gender),), $(phenotype)]"),
+            pl.col("[$($(ethnic)-$(gender),), $(phenotype)]").count().alias(RELATED_PHENOTYPE_PAIRS_FRQ)
         )
         .sort(
             by=RELATED_PHENOTYPE_PAIRS_FRQ,
@@ -144,7 +246,7 @@ def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phen
     rank_lf.collect().write_excel(f"{save_path}.xlsx")
 
     rank_head_df = rank_lf.head(50).select(
-        "SNP", RELATED_PHENOTYPE_PAIRS_FRQ).collect()
+        QassocColumns.SNP.value, RELATED_PHENOTYPE_PAIRS_FRQ).collect()
 
     fig, ax = plt.subplots()
     fig.set_dpi(150)
@@ -153,13 +255,16 @@ def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phen
     ax.xaxis.set_tick_params(rotation=90)
 
     ax.bar(
-        rank_head_df["SNP"],
+        rank_head_df[QassocColumns.SNP.value],
         rank_head_df[RELATED_PHENOTYPE_PAIRS_FRQ],
         linewidth=1,
         width=0.6,
         align="center",
         label="Frequency Rank"
     )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
 
     ax.set_title(
         "Frequency Rank of SNPs' Significant Association with Phenotypes (Pairwise)")
@@ -169,32 +274,65 @@ def snp_phenotype_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phen
     fig.tight_layout()
     plt.savefig(f"{save_path}.png", dpi=300)
 
+    return rank_lf
 
-def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethnic_pair_rank"):
+
+def snp_ethnicity_pair_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/snp_ethnic_pair_rank"
+) -> pl.LazyFrame:
     """
-    Calculate the frequency ranking of SNP-ethnicity pairs based on their occurrence count.
+    Calculate the frequency ranking of SNP-ethnicity pairs (no duplication).
 
     Args:
-        lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and ethnicity data.
+        result_lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and ethnicity data.
+        reference_lf (pl.LazyFrame): Input LazyFrame containing SNP frequency rank data.
         save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
 
     Returns:
         pl.LazyFrame: Processed LazyFrame with SNP-ethnicity association frequencies ranked by count.
     """
-    RELATED_ETHNICITY_PAIRS_FRQ = "related ethnicity pairs frequency"
+    RELATED_ETHNICITY_PAIRS_FRQ = "SNPs' ethnicity pairs frequency"
+    result_lf = result_lf.with_columns(
+        field_id=pl.col(QassocColumns.PHENOTYPE.value).str.split(".").list.get(1)
+    ).drop(QassocColumns.PHENOTYPE.value)
+
     rank_lf = (
-        lf
+        result_lf.join(
+            reference_lf,
+            left_on="field_id",
+            right_on=ReferenceColumns.FIELD_ID.value,
+            how="inner"
+        )
         .unique()
-        .group_by("SNP")
-        .agg("ethnic")
         .with_columns(
-            pl.col.ethnic.list.unique(),
+            pl.concat_str(
+                [
+                    pl.col(QassocColumns.ETHNIC.value),
+                    pl.col(QassocColumns.GENDER.value),
+                ],
+                separator="-"
+            )
+                .alias("$(ethnic)-$(gender)")
+        )
+        .group_by(QassocColumns.SNP.value, "$(ethnic)-$(gender)")
+        .agg(pl.col(ReferenceColumns.PHENOTYPE.value).alias("[$(phenotype)]"))
+        .with_columns(
+            pl.concat_list(pl.col("$(ethnic)-$(gender)").alias("[$(ethnic)-$(gender)]"))
         )
         .with_columns(
-            pl.col.ethnic.list.len().alias(RELATED_ETHNICITY_PAIRS_FRQ),
+            pl.concat_list(
+                pl.col("[$(phenotype)]"),
+                pl.col("[$(ethnic)-$(gender)]"),
+            )
+                .alias("[$($(phenotype),), $(ethnic)-$(gender)]")
         )
-        .rename(
-            {"ethnic": "ethnics"}
+        .group_by(QassocColumns.SNP.value)
+        .agg(
+            pl.col("[$($(phenotype),), $(ethnic)-$(gender)]"),
+            pl.col("[$($(phenotype),), $(ethnic)-$(gender)]").count().alias(RELATED_ETHNICITY_PAIRS_FRQ)
         )
         .sort(
             by=RELATED_ETHNICITY_PAIRS_FRQ,
@@ -206,7 +344,7 @@ def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethn
     rank_lf.collect().write_excel(f"{save_path}.xlsx")
 
     rank_head_df = rank_lf.head(50).select(
-        "SNP", RELATED_ETHNICITY_PAIRS_FRQ).collect()
+        QassocColumns.SNP.value, RELATED_ETHNICITY_PAIRS_FRQ).collect()
 
     fig, ax = plt.subplots()
     fig.set_dpi(150)
@@ -215,13 +353,16 @@ def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethn
     ax.xaxis.set_tick_params(rotation=90)
 
     ax.bar(
-        rank_head_df["SNP"],
+        rank_head_df[QassocColumns.SNP.value],
         rank_head_df[RELATED_ETHNICITY_PAIRS_FRQ],
         linewidth=1,
         width=0.6,
         align="center",
         label="Frequency Rank"
     )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
 
     ax.set_title(
         "Frequency Rank of populations with significant associations of each SNP (Pairwise)")
@@ -232,7 +373,13 @@ def snp_ethnicity_pair_rank(lf: pl.LazyFrame, save_path: str = "results/snp_ethn
     fig.tight_layout()
     plt.savefig(f"{save_path}.png", dpi=300)
 
-def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/snp_phenotype_duplication_rank"):
+    return rank_lf
+
+
+def snp_phenotype_duplication_rank(
+    lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/snp_phenotype_duplication_rank"):
     """
     Calculate the duplication frequency ranking of SNP-phenotype pairs across different ethnic groups.
 
@@ -284,6 +431,10 @@ def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/s
         label="Frequency Rank"
     )
 
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
+
+
     ax.set_title(
         "Frequency Rank of Significant Associations of SNP-phenotype Pair")
     """"""
@@ -292,3 +443,314 @@ def snp_phenotype_duplication_rank(lf: pl.LazyFrame, save_path: str = "results/s
 
     fig.tight_layout()
     plt.savefig(f"{save_path}.png", dpi=300)
+
+def phenotype_frequency_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/phenotype_frequency_rank",
+) -> pl.LazyFrame:
+    """
+    Calculate the frequency rank of phenotypes based on their occurrence frequency in the GWAS analysis result.
+
+    Args:
+        result_lf (pl.LazyFrame): The GWAS analysis result.
+        reference_lf (pl.LazyFrame): The phenotype reference data, recording phenotype f.id and corresponding phenotype name.
+        save_path (str, optional): The path to save the result. Defaults to "results/phenotype_frequency_rank".
+
+    Returns:
+        pl.LazyFrame: LazyFrame containing the frequency rank of phenotypes.
+    """
+    RELATED_SNP_COUNT = "related SNPs count"
+
+    rank_lf = (
+        result_lf
+            .with_columns(
+                field_id=pl.col(QassocColumns.PHENOTYPE.value).str.split(".").list.get(1)
+            )
+            .drop(QassocColumns.PHENOTYPE.value)
+            .join(
+                reference_lf,
+                left_on="field_id",
+                right_on=ReferenceColumns.FIELD_ID.value,
+                how="inner"
+            )
+            .unique()
+            .with_columns(
+                pl.concat_str(
+                    [
+                        pl.col(QassocColumns.ETHNIC.value),
+                        pl.col(QassocColumns.GENDER.value),
+                        pl.col(QassocColumns.SNP.value),
+                    ],
+                    separator="-"
+                ).alias("$(ethnic)-$(gender)-$(snp)")
+            )
+            .group_by(ReferenceColumns.PHENOTYPE.value)
+            .agg(
+                pl.col("$(ethnic)-$(gender)-$(snp)"),
+                pl.col("$(ethnic)-$(gender)-$(snp)").count().alias(RELATED_SNP_COUNT)
+            )
+            .sort(
+                by=RELATED_SNP_COUNT,
+                descending=True,
+                maintain_order=True,
+            )
+    )
+
+    rank_lf.collect().write_excel(f"{save_path}.xlsx")
+
+    # plotting
+    rank_head_df = rank_lf.head(50).select(
+        pl.col(ReferenceColumns.PHENOTYPE.value).alias("phenotype"),
+        RELATED_SNP_COUNT
+    ).collect()
+
+    fig, ax = plt.subplots()
+    fig.set_dpi(150)
+    fig.set_size_inches(15, 5)
+    ax.xaxis.set_tick_params(rotation=90)
+
+    ax.bar(
+        rank_head_df["phenotype"],
+        rank_head_df[RELATED_SNP_COUNT],
+        linewidth=1,
+        width=0.6,
+        align="center",
+        label="Frequency Rank"
+    )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
+
+    ax.set_title(
+        "Frequency Rank of Phenotypes' Significant Associations with SNPs"
+    )
+    ax.set_xlabel("Phenotype")
+    ax.set_ylabel("Frequency")
+
+    fig.tight_layout()
+    plt.savefig(f"{save_path}.png", dpi=300)
+
+    return rank_lf
+
+def phenotype_snp_pair_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str = "results/snp_phenotype_pair_rank"
+) -> pl.LazyFrame:
+    """
+    Calculate the frequency ranking of phenotypes' SNP-phenotype pairs (no duplication)
+
+    Args:
+        result_lf (pl.LazyFrame): Input LazyFrame containing GWAS calculation results
+            generated by this project.
+        reference_lf (pl.LazyFrame): LazyFrame containing phenotype reference data.
+        save_path (str): Output path prefix for saving results (will generate .xlsx and
+            .png files). Extension will be generated automatically.
+
+    Returns:
+        pl.LazyFrame: Processed Lazyrame with phenotypes' SNP-phenotype pair ranked count.
+    """
+    RELATED_PAIRS_FRQ = "Phenotypes' snp pairs number"
+
+    rank_lf = (
+        result_lf
+            .with_columns(
+                pl.col(QassocColumns.PHENOTYPE.value)
+                    .str
+                    .split(".")
+                    .list
+                    .get(1)
+                    .alias("field_id")
+            )
+            .drop(QassocColumns.PHENOTYPE.value)
+            .join(
+                reference_lf,
+                left_on="field_id",
+                right_on=ReferenceColumns.FIELD_ID.value,
+                how="inner"
+            )
+            .with_columns(
+                pl.concat_str(
+                    [
+                        pl.col(QassocColumns.ETHNIC.value),
+                        pl.col(QassocColumns.GENDER.value),
+                    ],
+                    separator="-"
+                ).alias("$(ethnic)-$(gender)")
+            )
+            .group_by(QassocColumns.SNP.value, ReferenceColumns.PHENOTYPE.value)
+            .agg(pl.col("$(ethnic)-$(gender)").alias("[$($(ethnic)-$(gender))]"))
+            .with_columns(
+                pl.concat_list(QassocColumns.SNP.value)
+            )
+            .with_columns(
+                pl.concat_list(
+                    pl.col("[$($(ethnic)-$(gender))]"),
+                    pl.col(QassocColumns.SNP.value),
+                )
+                    .alias("[$($(ethnic)-$(gender),), $(SNP)]")
+            )
+            .group_by(ReferenceColumns.PHENOTYPE.value)
+            .agg(
+                pl.col("[$($(ethnic)-$(gender),), $(SNP)]"),
+                pl.col("[$($(ethnic)-$(gender),), $(SNP)]").count().alias(RELATED_PAIRS_FRQ)
+            )
+            .sort(
+                by=RELATED_PAIRS_FRQ,
+                descending=True,
+                maintain_order=True
+            )
+    )
+
+    rank_lf.collect().write_excel(f"{save_path}.xlsx")
+
+    # visualisation
+    rank_head_df = rank_lf.head(50).select(
+        ReferenceColumns.PHENOTYPE.value, RELATED_PAIRS_FRQ
+    ).collect()
+
+    fig, ax = plt.subplots()
+    fig.set_dpi(150)
+    fig.set_size_inches(15, 5)
+    ax.get_xaxis().set_tick_params(rotation=90)
+
+    ax.bar(
+        rank_head_df[ReferenceColumns.PHENOTYPE.value],
+        rank_head_df[RELATED_PAIRS_FRQ],
+        linewidth=1,
+        width=0.6,
+        align="center",
+        label="Frequency Rank"
+    )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
+
+    ax.set_title(
+        "Frequency Rank of Phenotypes' Significant Association with SNPs (Pairwise)"
+    )
+    ax.set_xlabel("Phenotype")
+    ax.set_ylabel("Frequency")
+
+    fig.tight_layout()
+    plt.savefig(f"{save_path}.png", dpi=300)
+
+    return rank_lf
+
+def phenotype_ethnicity_pair_rank(
+    result_lf: pl.LazyFrame,
+    reference_lf: pl.LazyFrame,
+    *,
+    save_path: str,
+) -> pl.LazyFrame:
+    """
+    Calculate the frequency ranking of phenotype-ethnicity pairs (no duplication).
+
+    Args:
+        result_lf (pl.LazyFrame): Input LazyFrame containing GWAS results with SNP and ethnicity data.
+        reference_lf (pl.LazyFrame): Input LazyFrame containing SNP frequency rank data.
+        save_path (str): Output path prefix for saving results (will generate .xlsx and .png files).
+
+    Returns:
+        pl.LazyFrame: LazyFrame containing the frequency ranking of phenotype-ethnicity pairs.
+    """
+    RELATED_PAIRS_FRQ = "phenotypes' ethnicity pairs frequency"
+
+    rank_lf = (
+        result_lf
+            .with_columns(
+                pl.col(QassocColumns.PHENOTYPE.value)
+                    .str
+                    .split(".")
+                    .list
+                    .get(1)
+                    .alias("field_id")
+            )
+            .join(
+                reference_lf,
+                left_on="field_id",
+                right_on=ReferenceColumns.FIELD_ID.value,
+                how="inner",
+            )
+            .unique()
+            .with_columns(
+                pl.concat_str(
+                    [
+                        pl.col(QassocColumns.ETHNIC.value),
+                        pl.col(QassocColumns.GENDER.value),
+                    ],
+                    separator="-"
+                )
+                    .alias("$(ethnic)-$(gender)")
+            )
+            .group_by(
+                ReferenceColumns.PHENOTYPE.value,
+                "$(ethnic)-$(gender)"
+            )
+            .agg(
+                pl.col(QassocColumns.SNP.value).alias("[$($(SNP),)]")
+            )
+            .with_columns(
+                pl.concat_list(
+                    pl.col("$(ethnic)-$(gender)").alias("[$(ethnic)-$(gender)]")
+                )
+            )
+            .with_columns(
+                pl.concat_list(
+                    pl.col("[$($(SNP),)]"),
+                    pl.col("[$(ethnic)-$(gender)]")
+                )
+                    .alias("[$($(SNP),), $(ethnic)-$(gender)]")
+            )
+            .group_by(ReferenceColumns.PHENOTYPE.value)
+            .agg(
+                pl.col("[$($(SNP),), $(ethnic)-$(gender)]"),
+                pl.col("[$($(SNP),), $(ethnic)-$(gender)]").count().alias(RELATED_PAIRS_FRQ)
+            )
+            .sort(
+                by=RELATED_PAIRS_FRQ,
+                descending=True,
+                maintain_order=True,
+            )
+    )
+
+    rank_lf.collect().write_excel(f"{save_path}.xlsx")
+
+    rank_head_df = rank_lf.head(50).select(
+        pl.col(ReferenceColumns.PHENOTYPE.value).alias("phenotype"),
+        pl.col(RELATED_PAIRS_FRQ)
+    ).collect()
+
+    fig, ax = plt.subplots()
+    fig.set_dpi(150)
+    fig.set_size_inches(15, 5)
+
+    ax.xaxis.set_tick_params(rotation=90)
+
+    ax.bar(
+        rank_head_df["phenotype"],
+        rank_head_df[RELATED_PAIRS_FRQ],
+        linewidth=1,
+        width=0.6,
+        align="center",
+        label="Frequency Rank"
+    )
+
+    for i in rank_head_df.iter_rows(named=False):
+        ax.text(i[0], i[1], str(i[1]), ha="center", va="bottom")
+
+    ax.set_title(
+        "Rank of Population Group Numbers with Significant SNP-phenotype Associations"
+    )
+    ax.set_xlabel("Phenotype")
+    ax.set_ylabel("Frequency")
+
+    fig.tight_layout()
+    plt.savefig(f"{save_path}.png", dpi=300)
+
+    return rank_lf
+
+    pass
