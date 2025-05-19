@@ -393,13 +393,13 @@ if __name__ == "__main__":
                 qassoc_df.vstack(res[4], in_place=True)
 
     if qassoc_df is not None:
-        qassoc_df.write_csv(
+        qassoc_df.unique().write_csv(
             "summary-q_adjusted.tsv",
             separator="\t",
             include_header=True
         )
     if assoc_df is not None:
-        assoc_df.write_csv(
+        assoc_df.unique().write_csv(
             "summary-b_adjusted.tsv",
             separator="\t",
             include_header=True

@@ -2,7 +2,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use annotation::annotate_snps;
 use clap::Parser;
-use fm::{File, VcfFile};
+use fm::{FileManage, VcfFile};
 
 #[derive(Parser, Debug)]
 struct Args {

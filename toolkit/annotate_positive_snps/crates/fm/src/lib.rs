@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use std::{
     any::Any,
     ops::Deref,
@@ -10,7 +11,7 @@ pub enum FileType {
 }
 
 #[allow(drop_bounds)]
-pub trait File: Deref + Drop + Any {
+pub trait FileManage: Deref + Drop + Any {
     fn get_will_be_deleted(&self) -> bool;
     fn set_will_be_deleted(&mut self, will_be_deleted: bool);
     fn type_of(&self) -> FileType;
@@ -52,7 +53,7 @@ impl Deref for VcfFile {
         &self.path
     }
 }
-impl File for VcfFile {
+impl FileManage for VcfFile {
     fn get_will_be_deleted(&self) -> bool {
         self.will_be_deleted
     }
@@ -88,6 +89,80 @@ impl VcfFileBuilder {
         VcfFile {
             path: self.path,
             will_be_deleted: self.will_be_deleted,
+        }
+    }
+}
+
+pub enum Binary {
+    Vcftools,
+    VcfConcat,
+    Plink,
+    SnpEff,
+}
+impl Binary {
+    pub fn name(&self) -> String {
+        match self {
+            Binary::Vcftools => {
+                if cfg!(windows) {
+                    "vcftools.exe".to_string()
+                } else {
+                    "vcftools".to_string()
+                }
+            }
+            Binary::VcfConcat => {
+                if cfg!(windows) {
+                    "vcf-concat.exe".to_string()
+                } else {
+                    "vcf-concat".to_string()
+                }
+            }
+            Binary::Plink => {
+                if cfg!(windows) {
+                    "plink.exe".to_string()
+                } else {
+                    "plink".to_string()
+                }
+            }
+            Binary::SnpEff => "snpEff.jar".to_string(),
+        }
+    }
+    pub fn env_name(&self) -> String {
+        match self {
+            Binary::Vcftools => "VCFTOOLS_PATH".to_string(),
+            Binary::VcfConcat => "VCFCONCAT_PATH".to_string(),
+            Binary::Plink => "PLINK_PATH".to_string(),
+            Binary::SnpEff => "SNPEFF_PATH".to_string(),
+        }
+    }
+
+    #[cfg(feature = "set_env")]
+    pub fn set_env<T: AsRef<str>>(&self, value: Option<T>) -> Result<()> {
+        match value {
+            Some(path) => unsafe {
+                std::env::set_var(self.env_name(), path.as_ref());
+                Ok(())
+            },
+            None => match std::env::var(self.env_name()) {
+                Ok(path) => match PathBuf::from(&path).exists() {
+                    true => Ok(()),
+                    false => Err(anyhow!(
+                        "{} doesn't point to {}, which is not a valid file.",
+                        self.env_name(),
+                        path
+                    )),
+                },
+                Err(_) => match which::which(&self.name()) {
+                    Ok(path) => unsafe {
+                        std::env::set_var(self.env_name(), path);
+                        Ok(())
+                    },
+                    Err(_) => Err(anyhow!(
+                        "{} can't be found in PATH. Neither is it designated by cli parameter or {}.",
+                        self.name(),
+                        self.env_name()
+                    )),
+                },
+            },
         }
     }
 }

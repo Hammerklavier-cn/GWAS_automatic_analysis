@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use clap::Parser;
 use filter_snp::filter_snps;
-use fm::{File, VcfFile};
+use fm::{FileManage, VcfFile};
 
 #[derive(Parser, Debug, Clone)]
 struct Args {
