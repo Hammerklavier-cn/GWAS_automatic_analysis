@@ -1,14 +1,16 @@
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::Parser;
+use fm::VcfFile;
+use summarization::parse_ann_vcf_result;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
-    #[arg(short, long, help = "Path of annotated vcf(.gz) file.")]
-    input: PathBuf,
+    #[arg(long, help = "Path of annotated vcf file.")]
+    vcf: PathBuf,
 
-    // #[arg(short, long, help = "")]
     #[arg(
         short,
         long,
@@ -17,8 +19,14 @@ struct Args {
     output: PathBuf,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     println!("Args: {:?}", args);
+
+    let vcf_file = VcfFile::builder(&args.vcf).will_be_deleted(false).build();
+
+    parse_ann_vcf_result(vcf_file, &args.output)?;
+
+    Ok(())
 }

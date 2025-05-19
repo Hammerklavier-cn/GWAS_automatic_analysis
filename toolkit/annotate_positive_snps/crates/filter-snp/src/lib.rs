@@ -8,7 +8,7 @@ use std::{
 
 use fm::VcfFile;
 
-pub fn filter_snps<T: fm::File + 'static>(
+pub fn filter_snps<T: fm::FileManage + 'static>(
     source_file: T,
     snp_id_file: &Path,
     output_file_path: &Path,
@@ -60,7 +60,7 @@ pub fn filter_snps<T: fm::File + 'static>(
 
     let output = command
         .output()
-        .map_err(|e| format!("Failed to execute plink: {}", e))?;
+        .map_err(|e| format!("Failed to execute vcftools: {}", e))?;
 
     if !output.stderr.is_empty() {
         std::io::stderr().write_all(b"vcftools ERROR:")?;

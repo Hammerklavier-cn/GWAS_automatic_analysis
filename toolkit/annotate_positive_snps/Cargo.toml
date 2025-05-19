@@ -13,6 +13,7 @@ clap.workspace = true
 resolver = "2"
 members = [
     "crates/annotation",
+    "crates/concat_vcf",
     "crates/filter-snp",
     "crates/fm",
     "crates/summarization",
@@ -29,5 +30,5 @@ readme = "README.md"
 
 anyhow = "1.0"
 clap = { version = "4.5.38", features = ["derive"] }
-fm = { path = "crates/fm" }
+fm = { path = "crates/fm", features = ["set_env"] }
 which = { version = "7.0.3" }
