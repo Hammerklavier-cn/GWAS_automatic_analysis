@@ -19,7 +19,9 @@ pub fn annotate_snps(
         panic!("SNPEFF_PATH environment variable is not set");
     });
 
-    let stats_path = Path::join(output_path.parent().unwrap(), "stats.csv");
+    let stats_path = Path::join(output_path.parent().unwrap(), "result_stats.csv");
+    let html_path = Path::join(output_path.parent().unwrap(), "result_summary.html");
+    println!("Save stats csv at {}", stats_path.display());
 
     // java -jar snpEff.jar ann GRCh38.p14 -csvStats stats.csv \
     // /home/jimmy/projects/GWAS_automatic_analysis/toolkit/annotate_positive_snps/run/MRC1_part1_filtered.recode.vcf \
