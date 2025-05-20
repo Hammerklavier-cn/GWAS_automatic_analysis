@@ -82,7 +82,8 @@ pub fn concat_vcf_files<T: AsRef<Path>>(
 
     let mut output_vcf = VcfFile::builder(&output_path.as_ref().with_extension("vcf"))
         .will_be_deleted(true)
-        .build();
+        .set_check_existence(false)
+        .build()?;
     // println!("Right before writing");
     output_vcf.write_into(&mut std::io::BufReader::new(command_output))?;
     // println!("Right after writing");
@@ -92,7 +93,7 @@ pub fn concat_vcf_files<T: AsRef<Path>>(
         output_vcf.deref().display()
     );
 
-    output_vcf.set_will_be_deleted(false);
+    // output_vcf.set_will_be_deleted(false);
 
     Ok(output_vcf)
 }

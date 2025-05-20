@@ -54,7 +54,8 @@ pub fn annotate_snps(
 
     let output_vcf = VcfFile::builder(&output_path.with_extension("vcf"))
         .will_be_deleted(true)
-        .build();
+        .set_check_existence(false)
+        .build()?;
     output_vcf.write_into(&mut std::io::BufReader::new(command_output))?;
 
     println!("Finished writing result to {}", (*output_vcf).display());

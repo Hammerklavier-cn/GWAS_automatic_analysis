@@ -59,7 +59,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let source_vcf = VcfFile::builder(&args.input).will_be_deleted(false).build();
+    let source_vcf = VcfFile::builder(&args.input)
+        .will_be_deleted(false)
+        .build()?;
 
     let mut output_vcf = annotate_snps(source_vcf, &args.dataset_name, &args.output)?;
 
