@@ -136,7 +136,7 @@ impl Binary {
     }
 
     #[cfg(feature = "set_env")]
-    pub fn set_env<T: AsRef<str>>(&self, value: Option<T>) -> Result<()> {
+    pub fn set_env<T: AsRef<Path>>(&self, value: Option<T>) -> Result<()> {
         match value {
             Some(path) => unsafe {
                 std::env::set_var(self.env_name(), path.as_ref());
