@@ -24,7 +24,7 @@ fn main() -> Result<()> {
 
     println!("Args: {:?}", args);
 
-    let vcf_file = VcfFile::builder(&args.vcf).will_be_deleted(false).build();
+    let vcf_file = VcfFile::builder(&args.vcf).will_be_deleted(false).build()?;
 
     parse_ann_vcf_result(vcf_file, &args.output)?;
 

@@ -74,7 +74,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Concatenate input files
-    let vcf_file = VcfFile::builder(&args.input).will_be_deleted(false).build();
+    let vcf_file = VcfFile::builder(&args.input)
+        .will_be_deleted(false)
+        .build()?;
 
     let mut result_vcf_file = filter_snps(vcf_file, &args.snps, &args.output)?;
 

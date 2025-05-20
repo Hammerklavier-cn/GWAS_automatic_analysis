@@ -71,7 +71,9 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
         return Err("Failed to extract snps from given vcf file!".into());
     }
 
-    return Ok(VcfFile::builder(&output_file_path)
-        .will_be_deleted(true)
-        .build());
+    return Ok(
+        VcfFile::builder(&output_file_path.with_extension("recode.vcf"))
+            .will_be_deleted(true)
+            .build()?,
+    );
 }
