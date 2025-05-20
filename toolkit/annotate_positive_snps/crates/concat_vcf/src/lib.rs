@@ -64,7 +64,7 @@ pub fn concat_vcf_files<T: AsRef<Path>>(
     // println!("Exec: {}", vcf_concat_path);
     let mut command = Command::new(vcf_concat_path);
 
-    for vcf in input_vcfs {
+    for vcf in input_vcfs.iter() {
         // println!("Add arg: {}", vcf.deref().to_str().unwrap());
         command.arg(vcf.deref().to_str().unwrap());
     }
