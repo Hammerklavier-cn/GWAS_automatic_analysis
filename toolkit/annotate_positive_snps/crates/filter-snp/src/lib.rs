@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use std::{
     any::TypeId,
     io::Write,
@@ -12,7 +13,7 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
     source_file: T,
     snp_id_file: &Path,
     output_file_path: &Path,
-) -> Result<VcfFile, Box<dyn std::error::Error>> {
+) -> Result<VcfFile> {
     let vcftools_path = PathBuf::from_str(&std::env::var("VCFTOOLS_PATH").unwrap())?;
 
     let mut command = Command::new(vcftools_path.to_str().unwrap());
@@ -53,14 +54,14 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
                 .arg(output_file_path.with_extension("").with_extension(""));
         }
     } else {
-        return Err("Not implemented yet.".into());
+        return Err(anyhow!("Not implemented yet."));
     };
     // TODO: if source_file is bed
     // execute plink --bfile {source_file} --extract {snp_id_file} --recode vcf-iid --out {output_file}
 
     let output = command
         .output()
-        .map_err(|e| format!("Failed to execute vcftools: {}", e))?;
+        .map_err(|e| anyhow!("Failed to execute vcftools: {}", e))?;
 
     if !output.stderr.is_empty() {
         std::io::stderr().write_all(b"vcftools ERROR:")?;
@@ -68,7 +69,7 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
     }
 
     if true ^ output.status.success() {
-        return Err("Failed to extract snps from given vcf file!".into());
+        return Err(anyhow!("Failed to extract snps from given vcf file!"));
     }
 
     return Ok(
