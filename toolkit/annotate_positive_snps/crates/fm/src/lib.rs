@@ -71,12 +71,14 @@ impl FileManage for VcfFile {
 pub struct VcfFileBuilder {
     path: PathBuf,
     will_be_deleted: bool,
+    check_existence: bool,
 }
 impl VcfFileBuilder {
     pub fn new(path: &Path) -> Self {
         VcfFileBuilder {
             path: path.to_path_buf(),
             will_be_deleted: false,
+            check_existence: true,
         }
     }
 
@@ -85,11 +87,30 @@ impl VcfFileBuilder {
         self
     }
 
-    pub fn build(self) -> VcfFile {
-        VcfFile {
+    pub fn set_check_existence(mut self, check_existence: bool) -> Self {
+        self.check_existence = check_existence;
+        self
+    }
+
+    pub fn build(self) -> Result<VcfFile> {
+        if self.check_existence {
+            if !self.path.is_file() {
+                return Err(anyhow!(
+                    "{} doesn't point to a valid file!",
+                    self.path.display()
+                ));
+            }
+            if !self.path.to_str().unwrap().ends_with(".vcf")
+                && !self.path.to_str().unwrap().ends_with(".vcf.gz")
+            {
+                // println!("{}, {}", !self.path.to_str().unwrap().ends_with(".vcf"), !self.path.to_str().unwrap().ends_with(".vcf.gz"));
+                return Err(anyhow!("{} isn't a valid VCF file!", self.path.display()));
+            }
+        }
+        Ok(VcfFile {
             path: self.path,
             will_be_deleted: self.will_be_deleted,
-        }
+        })
     }
 }
 
