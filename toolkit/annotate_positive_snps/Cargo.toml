@@ -8,6 +8,11 @@ readme.workspace = true
 
 [dependencies]
 clap.workspace = true
+fm.workspace = true
+anyhow.workspace = true
+filter-snp = { path = "crates/filter-snp" }
+concat_vcf = { path = "crates/concat_vcf" }
+annotation = { path = "crates/annotation" }
 
 [workspace]
 resolver = "2"
@@ -32,3 +37,4 @@ anyhow = "1.0"
 clap = { version = "4.5.38", features = ["derive"] }
 fm = { path = "crates/fm", features = ["set_env"] }
 which = { version = "7.0.3" }
+annotation = { path = "crates/annotation" }
