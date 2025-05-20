@@ -35,6 +35,8 @@ pub fn annotate_snps(
         dataset,
         "-csvStats",
         stats_path.to_str().unwrap(),
+        "-htmlStats",
+        html_path.to_str().unwrap(),
         source_vcf.deref().to_str().unwrap(),
     ];
 
