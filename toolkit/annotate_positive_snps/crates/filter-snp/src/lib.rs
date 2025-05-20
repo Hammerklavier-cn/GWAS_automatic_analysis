@@ -36,7 +36,7 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
                 .arg("--recode")
                 .arg("--recode-INFO-all")
                 .arg("--out")
-                .arg(output_file_path.with_extension(""));
+                .arg(output_file_path);
         } else if source_file
             .get_path()
             .to_str()
@@ -51,7 +51,7 @@ pub fn filter_snps<T: fm::FileManage + 'static>(
                 .arg("--recode")
                 .arg("--recode-INFO-all")
                 .arg("--out")
-                .arg(output_file_path.with_extension("").with_extension(""));
+                .arg(output_file_path);
         }
     } else {
         return Err(anyhow!("Not implemented yet."));
