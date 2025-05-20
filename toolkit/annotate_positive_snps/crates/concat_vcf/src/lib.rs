@@ -39,7 +39,12 @@ mod tests {
                 .will_be_deleted(false)
                 .build()
         })
+        .filter_map(|result| result.ok())
         .collect::<Vec<_>>();
+
+        if input_vcfs.len() == 0 {
+            return Err(anyhow!("No input VCF files provided"));
+        }
 
         let output_path = PathBuf::from("../../run/MRC1-concat-filtered.recode");
 
