@@ -75,6 +75,9 @@ class TestAnalyse(unittest.TestCase):
     def test_phenotype_ethnicity_pair_rank(self):
         libutils.phenotype_ethnicity_pair_rank(self.input_lf, self.reference_lf, save_path="test_results/phenotype-ethnicity-pair-rank")
 
+    def test_save_merged(self):
+        self.input_lf.collect().write_excel("test_results/merged_results.xlsx")
+
 
 
 if __name__ == "__main__":
