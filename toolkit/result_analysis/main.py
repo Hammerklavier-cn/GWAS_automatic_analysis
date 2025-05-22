@@ -4,6 +4,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+from xlsxwriter import Workbook
 
 if __name__ == "__main__":
     args = cli.get_parser().parse_args()
@@ -22,6 +23,11 @@ if __name__ == "__main__":
 
     # sns.set_style("whitegrid")
     plt.style.use("seaborn-v0_8-whitegrid")
+
+    with Workbook(f"{args.output}/concatenated_results.xlsx") as wb:
+        lfs = libutils.concatenate_results(results_lf, reference_lf)
+        lfs[0].collect().write_excel(wb, worksheet="concatenated")
+        lfs[1].collect().write_excel(wb, worksheet="mean")
 
     if cli.AnalysisOption.ALL.name in args.analysis:
         print("Perform all analysis projects")
