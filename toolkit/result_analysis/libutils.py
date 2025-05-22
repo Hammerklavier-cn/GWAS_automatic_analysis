@@ -92,6 +92,33 @@ def read_reference_data(file_path: str) -> pl.LazyFrame:
 
     return lf
 
+def concatenate_results(results_lf: pl.LazyFrame, reference_lf: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
+    """Concatenate results and reference data"""
+    merged_results =  (
+        results_lf
+            .with_columns(
+                field_id=pl.col(QassocColumns.PHENOTYPE.value).str.split(".").list.get(1)
+            )
+            .rename({QassocColumns.PHENOTYPE.value: "f.id"})
+            .join(
+                reference_lf,
+                left_on="field_id",
+                right_on=ReferenceColumns.FIELD_ID.value,
+                how="inner"
+            )
+            .drop("field_id")
+    )
+    avg_lf = (
+        merged_results
+            .group_by(ReferenceColumns.PHENOTYPE.value)
+            .agg(
+                pl.col(QassocColumns.BETA.value).mean().alias("beta_mean"),
+                pl.col(QassocColumns.SE.value).mean().alias("se_mean"),
+                pl.col(QassocColumns.R2.value).mean().alias("r2_mean"),
+                pl.col(QassocColumns.P.value).mean().alias("p_mean"),
+            )
+    )
+    return merged_results, avg_lf
 
 def snp_frequency_rank(
     result_lf: pl.LazyFrame,
