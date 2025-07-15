@@ -1,4 +1,5 @@
 from argparse import Namespace
+from enum import Enum
 import os, logging, sys
 import subprocess
 from typing import Optional
@@ -159,3 +160,25 @@ class FileManagement(object):
             logging.error("The file %s does not exist!", file_root)
             sys.exit(-1)
         self.working_file = file_root
+
+class Gender(Enum):
+    MALE = "male"
+    FEMALE = "female"
+    BOTH_GENDER = "both gender"
+    UNKNOWN = "unknown"
+
+    def __format__(self, format_spec: str) -> str:
+        return self.value
+
+    @staticmethod
+    def from_string(gender_str: str) -> "Gender":
+        if gender_str.lower() == "male":
+            return Gender.MALE
+        elif gender_str.lower() == "female":
+            return Gender.FEMALE
+        elif gender_str.lower() in ["both gender", "both-gender"]:
+            return Gender.BOTH_GENDER
+        elif gender_str.lower() == "unknown":
+            return Gender.UNKNOWN
+        else:
+            raise ValueError(f"Invalid gender string: {gender_str}")
