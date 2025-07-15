@@ -3,6 +3,7 @@ matplotlib
 openpyxl
 pandas
 polars
+xlsxwriter
 fastexcel
 typing_extensions
 scipy
