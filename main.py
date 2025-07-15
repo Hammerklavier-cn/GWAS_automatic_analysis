@@ -23,7 +23,7 @@ from myutil import complements
 logger = small_tools.create_logger("MainLogger", level=logging.WARN)
 
 from args_setup import myargs
-from Classes import FileManagement
+from Classes import FileManagement, Gender
 from myutil import association_analysis, group_division, quality_control, small_tools
 from myutil.complements import extract_phenotype_info
 import myutil.visualisations as vislz
@@ -67,17 +67,19 @@ if __name__ == "__main__":
     print("Standardising source file...")
     logger.info("Standardising source file...")
     output = fm.source_standardisation()
-    outputs = [output]
-    output_cache: list = []
+    outputs1: list[tuple[Gender, str]] = []
+    # output_cache: list = []
     output_queue = Queue()
 
     # complete gender information in .fam and divide population into male and female groups.
-    print(fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender)
+    print(fm.gender_info_file_path,
+          fm.gender_reference_path, fm.divide_pop_by_gender)
     match (fm.gender_info_file_path, fm.gender_reference_path, fm.divide_pop_by_gender):
         case (str(), str(), True):
             print("Dividing population by gender...")
-            logger.info("Completing gender information and divide population by gender...")
-            outputs = group_division.divide_pop_by_gender(
+            logger.info(
+                "Completing gender information and divide population by gender...")
+            outputs1 = group_division.divide_pop_by_gender(
                 fm.plink,
                 output,
                 fm.gender_reference_path,
@@ -87,7 +89,7 @@ if __name__ == "__main__":
             # Complete gender information but do not divide pop by gender
             logger.info("Completing gender information...")
             print("Completing gender information...")
-            outputs = complements.gender_complement(
+            outputs1 = complements.gender_complement(
                 fm.plink,
                 output,
                 fm.gender_info_file_path,
@@ -96,6 +98,7 @@ if __name__ == "__main__":
             pass
         case _:
             print("Gender information is not provided. Skip gender complement.")
+            outputs1 = [(Gender.UNKNOWN, output)]
 
     # if args.gender:
     #     print("Completing gender information...")
@@ -114,12 +117,13 @@ if __name__ == "__main__":
     match (fm.ethnic_info_file_path, fm.ethnic_reference_path):
         case (str(), str()):
             print("Dividing population into ethnic groups...")
-            output_cache: list = []
-            for output in outputs:
+            output_cache: list[tuple[Gender, str, str]] = []
+            for output in outputs1:
                 progress_bar.print_progress(
-                    f"Divide {os.path.relpath(output[1])} into ethnic groups...",
-                    len(outputs),
-                    outputs.index(output) + 1 # type: ignore
+                    f"Divide {os.path.relpath(
+                        output[1])} into ethnic groups...",
+                    len(outputs1),
+                    outputs1.index(output) + 1
                 )
                 result = group_division.divide_pop_by_ethnic(
                     fm.plink,
@@ -130,13 +134,13 @@ if __name__ == "__main__":
                     fm.loose_ethnic_filter
                 )
                 output_cache.extend(result)
-            outputs = output_cache
-            output_cache = []
             print("")
             logger.info("Division finished.")
         case _:
             print("No ethnic information provided, skipping ethnic complement.")
-            outputs = [(output[0], "all_ethnic_groups", output[1]) for output in outputs]
+            output_cache = [(output[0], "all ethnic groups", output[1])
+                            for output in outputs1]
+    outputs: list[tuple[Gender, str, str]] = output_cache
 
     # QC
     ## 1. filter high missingness
@@ -150,14 +154,15 @@ if __name__ == "__main__":
             progress_bar.print_progress(
                 f"Visualising missingness for {os.path.relpath(output[1])}...",
                 len(outputs),
-                outputs.index(output) + 1 # type: ignore
+                outputs.index(output) + 1
             )
             futures.append(
                 pool.submit(
                     vislz.minor_allele_frequency,
                     fm,
                     output[2],
-                    os.path.join(os.path.dirname(output[2]), "../", "missingness_visualisations",os.path.basename(output[2])),
+                    os.path.join(os.path.dirname(
+                        output[2]), "../", "missingness_visualisations", os.path.basename(output[2])),
                     gender=output[0], ethnic=output[1]
                 )
             )
@@ -176,22 +181,27 @@ if __name__ == "__main__":
         output_cache = []
         for output in outputs:
             progress_bar.print_progress(
-                f"Filtering high missingness for {os.path.relpath(output[2])}...",
+                f"Filtering high missingness for {
+                    os.path.relpath(output[2])}...",
                 len(outputs),
-                outputs.index(output) + 1 # type: ignore
+                outputs.index(output) + 1  # type: ignore
             )
             futures.append(
                 pool.submit(
                     quality_control.filter_high_missingness,
-                        fm,
-                        output[2],
-                        f"{output[2]}_no_miss",
-                        output[0],
-                        output[1],
-                        missingness_threshold = 0.02
+                    fm,
+                    output[2],
+                    f"{output[2]}_no_miss",
+                    output[0],
+                    output[1],
+                    missingness_threshold=0.02
                 )
             )
-        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+        output_cache = [
+            future.result()
+            for future in as_completed(futures)
+            if future.result() is not None
+        ]
     print()
     logger.info("Filtering high missingness finished.")
     outputs = output_cache
@@ -211,7 +221,8 @@ if __name__ == "__main__":
                 vislz.hardy_weinberg,
                 fm,
                 output[2],
-                os.path.join(os.path.dirname(output[2]), "../", "hwe_visualisation", os.path.basename(output[2])+"hwe"),
+                os.path.join(os.path.dirname(
+                    output[2]), "../", "hwe_visualisation", os.path.basename(output[2])+"hwe"),
                 output[1],
                 output[0]
             )
@@ -234,7 +245,8 @@ if __name__ == "__main__":
                     output[1],
                 )
             )
-        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+        output_cache = [future.result() for future in as_completed(
+            futures) if future.result() is not None]
     outputs = output_cache
     output_cache = []
     logger.info("Filtering HWE finished.")
@@ -255,7 +267,8 @@ if __name__ == "__main__":
                 vislz.minor_allele_frequency,
                 fm,
                 output[2],
-                os.path.join(os.path.dirname(output[2]), "../", "maf_visualisation", os.path.basename(output[2])+"_maf"),
+                os.path.join(os.path.dirname(
+                    output[2]), "../", "maf_visualisation", os.path.basename(output[2])+"_maf"),
                 gender=output[0], ethnic=output[1]
             )
     logger.info("MAF visualisation finished.")
@@ -280,12 +293,17 @@ if __name__ == "__main__":
                     maf_threshold=0.01
                 )
             )
-        output_cache = [future.result() for future in as_completed(futures) if future.result() is not None]
+        output_cache = [future.result() for future in as_completed(
+            futures) if future.result() is not None]
     outputs = output_cache
     output_cache = []
     print()
     logger.info("Filtering MAF finished.")
 
+    ## 4. Multi-dimensional scaling
+    ### LD pruning
+
+    ### PCA
 
     ### Now we have finished all QC processes.
     ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
@@ -298,7 +316,8 @@ if __name__ == "__main__":
                 path
             )
         case None, str() as path:
-            pheno_files = [(file, os.path.splitext(os.path.basename(file))[0]) for file in os.listdir(path) if file.endswith(".txt")]
+            pheno_files = [(file, os.path.splitext(os.path.basename(file))[0])
+                           for file in os.listdir(path) if file.endswith(".txt")]
         case _:
             logger.fatal("Theoratically impossible!")
             sys.exit(1)
@@ -315,23 +334,27 @@ if __name__ == "__main__":
                 ## Calculate association
                 pool.submit(
                     progress_bar.print_progress,
-                        f"Calculating association between {os.path.basename(pheno_file[0])} and {os.path.basename(output[2])}...",
-                        len(outputs) * len(pheno_files),
-                        pheno_files.index(pheno_file)*len(outputs) + outputs.index(output) + 1
+                    f"Calculating association between {os.path.basename(pheno_file[0])} and {
+                        os.path.basename(output[2])}...",
+                    len(outputs) * len(pheno_files),
+                    pheno_files.index(pheno_file)*len(outputs) +
+                    outputs.index(output) + 1
                 )
                 futures.append(pool.submit(
                     association_analysis.quantitive_association,
-                        fm.plink,
-                        output[2],
-                        pheno_file[0],
-                        pheno_file[1],
-                        os.path.join("assoc_results", f"{os.path.basename(output[2])}_{os.path.splitext(os.path.basename(pheno_file[1]))[0]}"),
-                        output[0],
-                        output[1]
+                    fm.plink,
+                    output[2],
+                    pheno_file[0],
+                    pheno_file[1],
+                    os.path.join("assoc_results", f"{os.path.basename(output[2])}_{
+                                 os.path.splitext(os.path.basename(pheno_file[1]))[0]}"),
+                    output[0],
+                    output[1]
                 ))
-        output_cache = [future.result() for future in as_completed(futures)]
-    outputs = output_cache
-    output_cache = []
+        output_cache2: list[tuple[Gender, str, str, str]] = [future.result(
+        ) for future in as_completed(futures) if future.result() is not None]
+    outputs2 = output_cache2
+    output_cache2 = []
 
     # for output in outputs:
     #     progress_bar.print_progress(
@@ -346,19 +369,20 @@ if __name__ == "__main__":
     #     )
 
     with ProcessPoolExecutor(max_workers=int(cpu_count() * 2 / 3)) as pool:
-        for output in outputs:
+        for output in outputs2:
             ## Visualise association
             pool.submit(
                 progress_bar.print_progress,
-                    f"Visualising association of {output[2]}...",
-                    len(outputs) + 1,
-                    outputs.index(output)
+                f"Visualising association of {output[2]}...",
+                len(outputs2) + 1,
+                outputs2.index(output)
             )
             pool.submit(
                 vislz.assoc_visualisation,
-                    f"{output[3]}.qassoc",
-                    os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
-                    output[0], output[1], output[2]
+                f"{output[3]}.qassoc",
+                os.path.join("assoc_pictures", f"{
+                             os.path.basename(output[3])}_assoc"),
+                output[0], output[1], output[2]
             )
 
     ## 4. Generate summary
@@ -368,14 +392,15 @@ if __name__ == "__main__":
     qassoc_df: Optional[pl.DataFrame] = None
     assoc_df: Optional[pl.DataFrame] = None
 
-    for output in outputs:
+    for output in outputs2:
         progress_bar.print_progress(
-            f"Filtering {output[3]}", len(outputs), outputs.index(output)
+            f"Filtering {output[3]}", len(outputs2), outputs2.index(output)
         )
         res = association_analysis.result_filter(
             output[3],
-            os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-            output[0],output[1],output[2],
+            os.path.join(
+                "./summary", f"{os.path.basename(output[3])}_summary.csv"),
+            output[0], output[1], output[2],
             alpha=0.05,
             adjust_alpha_by_quantity=True
         )
@@ -405,14 +430,15 @@ if __name__ == "__main__":
             include_header=True
         )
 
-    for output in outputs:
+    for output in outputs2:
         progress_bar.print_progress(
-            f"Filtering {output[3]}", len(outputs), outputs.index(output)
+            f"Filtering {output[3]}", len(outputs2), outputs2.index(output)
         )
         res = association_analysis.result_filter(
             output[3],
-            os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-            output[0],output[1],output[2],
+            os.path.join(
+                "./summary", f"{os.path.basename(output[3])}_summary.csv"),
+            output[0], output[1], output[2],
             alpha=0.05,
             adjust_alpha_by_quantity=False
         )
@@ -475,9 +501,6 @@ if __name__ == "__main__":
 
     # summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
     # summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
-
-
-
 
     '''for pheno_file in pheno_files:
         for output in outputs:

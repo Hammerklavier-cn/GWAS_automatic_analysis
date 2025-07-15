@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from threading import Thread
 import logging, os, sys
 from multiprocessing import Process
-from Classes import FileManagement
+from Classes import FileManagement, Gender
 from typing import Optional
 
 from myutil.small_tools import create_logger
@@ -18,9 +18,9 @@ def divide_pop_by_ethnic(
         input_name: str,
         ethnic_info_path: str,
         reference_path: str = "./myutil/ethnic_serial_reference.tsv",
-        original_gender: str | None = None,
+        original_gender: Gender = Gender.BOTH_GENDER,
         loose_filter: bool = True
-    ) -> list[tuple[Optional[str], str, str]]:
+    ) -> list[tuple[Gender, str, str]]:
     """
     Divide population by ethnicity.
 
@@ -34,8 +34,8 @@ def divide_pop_by_ethnic(
 
     Returns
     -------
-    list[list[str | None, str, str]]
-        [`gender`, `ethnic_name`, `file_path`].
+    list[list[Gender, str, str]]
+        [`Gender`, `ethnic_name`, `file_path`].
     """
     # read files
     try:
@@ -124,7 +124,7 @@ def divide_pop_by_ethnic(
     )
 
     ## Divide population by ethnicity.
-    group_list: list[tuple[Optional[str], str, str]] = []
+    group_list: list[tuple[Gender, str, str]] = []
     ### Divide population into small ethnic groups and save list of individuals in each group.
     ethnic_names = set(eth_ref2.select("meaning").to_series().to_list())
 
@@ -195,7 +195,7 @@ def divide_pop_by_gender(
     input_name: str,
     gender_reference_path: str,
     gender_info_path: str
-) -> list[list[str]]:
+) -> list[tuple[Gender, str]]:
     """
     Divide population by gender.
 
@@ -211,7 +211,7 @@ def divide_pop_by_gender(
 
     # Returns:
 
-    list[list[str]]: _A list of lists, containing [`gender`, `relating file path`]._
+    list[tuple[Gender, str]]: _A list of tuples, containing (`Gender`, `relating file path`)._
     """
 
      # generate a .csv file, containing [FID, IID, Sex] columns.
@@ -289,7 +289,7 @@ def divide_pop_by_gender(
     )
 
     # divide plink file by gender
-    output_file_names: list[list[str]] = []
+    output_file_names: list[tuple[Gender, str]] = []
     logger.info("Filter males...")
     plink_cmd = [
         plink_path,
@@ -306,7 +306,7 @@ def divide_pop_by_gender(
         check=True,
     )
     logger.info("Successfully filtered males.")
-    output_file_names.append(["male", f"{input_name}_male"])
+    output_file_names.append((Gender.MALE, f"{input_name}_male"))
     logger.info("Filter females...")
     plink_cmd = [
         plink_path,
@@ -323,5 +323,5 @@ def divide_pop_by_gender(
         check=True,
     )
     logger.info("Successfully filtered females.")
-    output_file_names.append(["female", f"{input_name}_female"])
+    output_file_names.append((Gender.FEMALE, f"{input_name}_female"))
     return output_file_names # place holder for mypy check

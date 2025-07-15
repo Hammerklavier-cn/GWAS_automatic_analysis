@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 from typing_extensions import deprecated
+from Classes import Gender
 from myutil import small_tools
 from typing import Literal
 import pandas as pd
@@ -14,12 +15,12 @@ logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 def quantitive_association(
     plink_path: str,
     input_name: str,
-    phenotype_name: str|None,
+    phenotype_name: str,
     phenotype_info_path: str,
     output_name: str,
-    gender: str|None,
-    ethnic: str|None
-) -> tuple[str|None, str|None, str|None, str] | None:
+    gender: Gender,
+    ethnic: str
+) -> tuple[Gender, str, str, str] | None:
     """
     Performs a quantitative association analysis on the given input file.
 
@@ -70,16 +71,16 @@ def quantitive_association(
 def result_filter(
     input_path: str,
     output_path: str,
-    gender: Literal["Men", "Women", None] = None,
-    ethnic: str | None = None,
-    phenotype: str | None = None,
+    gender: Gender,
+    ethnic: str,
+    phenotype: str,
     *,
     alpha = 0.05,
     adjust_alpha_by_quantity: bool = True
 ) -> tuple[
-    Literal["Men", "Women", None],
-    str | None,
-    str | None,
+    Gender,
+    str,
+    str,
     Literal["assoc", "qassoc"],
     pl.DataFrame
 ] | None:
@@ -206,7 +207,7 @@ def linear_regression(
     output_name: str,
     gender: Literal["male", "female"] | None = None,
     ethnic: str | None = None,
-) -> tuple[Literal["male", "female"] | None, str | None, str | None, str]:
+) -> tuple[Literal["male", "female"] | None, str | None, str | None, str] | None:
     """
     Perform a linear regression analysis using PLINK for a quantitive phenotype.
 

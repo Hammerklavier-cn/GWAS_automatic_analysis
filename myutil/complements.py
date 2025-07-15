@@ -2,7 +2,7 @@ import subprocess
 import os, sys, logging
 from typing import Literal, Sequence
 
-from Classes import FileManagement
+from Classes import FileManagement, Gender
 from myutil.small_tools import ProgressBar, create_logger
 from deprecated.sphinx import deprecated
 
@@ -439,7 +439,7 @@ def gender_complement(
     input_name: str,
     gender_info_path: str,
     gender_reference_path: str
-) -> Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]:
+) -> list[tuple[Gender, str]]:
     """
     complement plink-format file with gender information.
 
@@ -454,8 +454,8 @@ def gender_complement(
             Path to gender reference file, which offers reference of gender codings to their meanings.
             The file should be in .csv/.tsv/.xlsx/.xls format.
     Returns:
-        list (Sequence[tuple[Literal["male", "female", "both-gender"] | None, str]]):
-            list of tuples, where each tuple is (gender, file_path)
+        list (Sequence[tuple[Gender, str]]):
+            list of tuples, where each tuple is (Gender, file_path)
     Raises:
         ValueError:
             if gender_info_path is not a valid path
@@ -582,7 +582,7 @@ def gender_complement(
     logger.info("Successfully complemented gender information")
 
     # complement gender information by plink `--update-sex`
-    output_file_names: list[tuple[Literal["male", "female"]|None, str]] = []
+    output_file_names: list[tuple[Gender, str]] = []
     plink_cmd = [
         plink_path,
         "--bfile", input_name,
@@ -597,6 +597,6 @@ def gender_complement(
         check=True,
     )
     logger.info("Successfully complemented gender information by plink")
-    output_file_names.append((None, f"{input_name}_both-gender"))
+    output_file_names.append((Gender.BOTH_GENDER, f"{input_name}_both-gender"))
 
     return output_file_names
