@@ -243,7 +243,8 @@ within %s %s population...", phenotype_name, gender.value, ethnic
             plink_path,
             "--bfile"
         ]
-
+    except:
+        pass
     pass
 
 def multidimensional_scaling(
