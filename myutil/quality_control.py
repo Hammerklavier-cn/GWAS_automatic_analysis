@@ -159,3 +159,63 @@ def filter_hwe(
         return
     logging.info("HWE filtering completed.")
     return gender, ethnic, save_path_name
+
+
+def ld_pruning(
+    plink_path: str,
+    input_path_name: str,
+    save_path_name: str,
+    gender: Gender,
+    ethnic: str,
+    window_size: int = 50,
+    step_size: int = 5,
+    r2_threshold: float = 0.2
+) -> str | None:
+    """
+    Calculate linkage disequilibrium (LD).
+
+    Args:
+        plink_path (str):
+            Path to plink executable.
+        input_path_name (str):
+            Name of the input file.
+        save_path_name (str):
+            Path name of the output file.
+        gender (Gender):
+            Gender (enum) of the samples.
+        ethnic (str):
+            Ethnicity of the samples.
+        window_size (int):
+            Window size for LD calculation. Default is 50.
+        step_size (int):
+            Step size for LD calculation. Default is 5.
+        r2_threshold (float):
+            Threshold of r^2 values. Default is 0.2.
+
+    Returns:
+        output_path_name str | None:
+            Path name of the output file. If process failed, returns None.
+            Note that the output file has a suffix of ".prune.in" or ".prune.out". You need to
+            manually add this in your code.
+    """
+    try:
+        command = [
+            plink_path,
+            "--bfile", input_path_name,
+            "--indep-pairwise", window_size, step_size, r2_threshold,
+            "--out", save_path_name,
+        ]
+        subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"LD pruning failed with error code {e.returncode}")
+        return
+    except Exception as e:
+        logging.error("Unexpected error occurred: %s", str(e))
+        sys.exit(1)
+
+    logging.info("LD pruning completed successfully")
+    return save_path_name
