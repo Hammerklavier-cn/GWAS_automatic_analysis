@@ -430,9 +430,10 @@ if __name__ == "__main__":
             pool.submit(
                 vislz.assoc_visualisation,
                 f"{output[3]}.qassoc",
-                os.path.join("assoc_pictures", f"{
-                             os.path.basename(output[3])}_assoc"),
-                output[0], output[1], output[2]
+                os.path.join(
+                    "assoc_pictures", f"{os.path.basename(output[3])}_assoc"
+                ),
+                *output[0:3]
             )
 
     ## 4. Generate summary
