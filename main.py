@@ -18,7 +18,7 @@ import polars as pl
 
 ## self-defined libraries
 ### Self defined logger
-from myutil import small_tools
+from myutil import mds, small_tools
 from myutil import complements
 logger = small_tools.create_logger("MainLogger", level=logging.WARN)
 
@@ -300,13 +300,57 @@ if __name__ == "__main__":
     print()
     logger.info("Filtering MAF finished.")
 
-    ## 4. Multi-dimensional scaling
-    ### LD pruning
+    # ## 4. Multi-dimensional scaling
+    # ### LD pruning
+    # logger.info("Executing LD pruning...")
+    # os.mkdir("LD_pruning")
+    # # (gender, ethnic, plink file, LD pruning result)
+    # ld_pruning_outputs: list[tuple[Gender, str, str, str]] = []
+    # for index, output in enumerate(outputs):
+    #     progress_bar.print_progress(
+    #         f"LD pruning for {os.path.relpath(output[2])}...",
+    #         len(outputs),
+    #         index
+    #     )
+    #     ld_pruning_output = quality_control.ld_pruning(
+    #         fm.plink,
+    #         output[2],
+    #         os.path.join("LD_pruning", f"{os.path.basename(output[2])}_indep-SNP"),
+    #         output[0],
+    #         output[1],
+    #     )
+    #     if ld_pruning_output is not None:
+    #         ld_pruning_outputs.append((*output, ld_pruning_output))
 
-    ### PCA
+    """OOM will occur in the PCA process!"""
+    # ### PCA
+    # logger.info("Executing PCA...")
+    # os.mkdir("PCA")
+    # # (gender, ethnic, plink file, PCA result)
+    # pca_outputs: list[tuple[Gender, str, str, str]] = []
+    # for index, output in enumerate(ld_pruning_outputs):
+    #     progress_bar.print_progress(
+    #         f"PCA for {os.path.relpath(output[2])}...",
+    #         len(outputs),
+    #         index
+    #     )
+    #     pca_output = mds.principle_component_analysis(
+    #         fm.plink,
+    #         output[2],
+    #         output[3],
+    #         os.path.join("PCA", f"{os.path.basename(output[2])}_PCA"),
+    #         output[0],
+    #         output[1],
+    #     )
+    #     if pca_output is not None:
+    #         pca_outputs.append((output[0], output[1], pca_output, pca_output))
 
-    ### Now we have finished all QC processes.
-    ### Next, we shall first split the phenotype source files and then perform the GWAS analysis.
+    # Future: Additional covariants can be added here (say, age, BMI, ethnic, etc.).
+    #         Note that in this programme, sex is forcely included as an covariate.
+    #
+
+    # Now we have finished all QC processes.
+    # Next, we shall first split the phenotype source files and then perform the GWAS analysis.
 
     print("Splitting phenotype source files...")
     match fm.phenotype_file_path, fm.phenotype_folder_path:
@@ -322,11 +366,14 @@ if __name__ == "__main__":
             logger.fatal("Theoratically impossible!")
             sys.exit(1)
 
+    # Association analysis
+
     print("")
     print("Performing GWAS analysis & visualisation...")
     os.makedirs("assoc_pictures")
     print("Phenotype files:", pheno_files)
     os.mkdir("assoc_results")
+
     with ProcessPoolExecutor(max_workers=int(cpu_count()/1.5)) as pool:
         futures: list[FutureClass] = []
         for pheno_file in pheno_files:
@@ -340,6 +387,7 @@ if __name__ == "__main__":
                     pheno_files.index(pheno_file)*len(outputs) +
                     outputs.index(output) + 1
                 )
+                ## The following implementation does not support covariates and will be deprecated.
                 futures.append(pool.submit(
                     association_analysis.quantitive_association,
                     fm.plink,
@@ -351,6 +399,8 @@ if __name__ == "__main__":
                     output[0],
                     output[1]
                 ))
+
+
         output_cache2: list[tuple[Gender, str, str, str]] = [future.result(
         ) for future in as_completed(futures) if future.result() is not None]
     outputs2 = output_cache2
