@@ -205,9 +205,9 @@ def linear_regression(
     phenotype_name: str,
     phenotype_info_path: str,
     output_name: str,
-    gender: Literal["male", "female"] | None = None,
+    gender: Gender = Gender.UNKNOWN,
     ethnic: str | None = None,
-) -> tuple[Literal["male", "female"] | None, str | None, str | None, str] | None:
+) -> str | None:
     """
     Perform a linear regression analysis using PLINK for a quantitive phenotype.
 
@@ -224,17 +224,26 @@ def linear_regression(
             The path to the phenotype information file.
         output_name (str):
             Name of the output file.
-        gender (Literal["male", "female"] | None, optional):
+        gender (Gender):
             The gender of the individuals. Defaults to None.
         ethnic (str | None, optional):
             The ethnicity of the individuals. Defaults to None.
     Returns:
-        tuple (tuple[Literal["male", "female"] | None, str | None, str | None, str]):
-            A tuple containing the gender, ethnicity, phenotype, and output file name.
+        str | None:
+            The name of the output file (extension excluded).
     Generate Files:
         %(output_name)s.assoc.linear
     """
-    logger.info("Perform a linear regression analysis using PLINK for a quantitive phenotype")
+    logger.info(
+        "Performing a linear regression analysis using PLINK for a quantitive phenotype `%s`\
+within %s %s population...", phenotype_name, gender.value, ethnic
+    )
+    try:
+        command = [
+            plink_path,
+            "--bfile"
+        ]
+
     pass
 
 def multidimensional_scaling(
@@ -293,3 +302,10 @@ def multidimensional_scaling(
     )
 
     pass
+
+# def linear_regression(
+#     plink_path: str,
+#     input_file_name: str,
+#     covar_file_path: str,
+#     output_file_name: str,
+# ):
