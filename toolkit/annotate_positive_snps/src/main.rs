@@ -44,7 +44,7 @@ struct Cli {
     binary_paths: BinaryPath,
 
     /// Output folder path
-    #[arg(short, long, help = "Output folder path.")]
+    #[arg(short, long, help = "Prefix for output files.")]
     out: PathBuf,
 }
 
