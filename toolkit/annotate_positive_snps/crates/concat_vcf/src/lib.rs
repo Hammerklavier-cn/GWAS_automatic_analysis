@@ -85,7 +85,7 @@ pub fn concat_vcf_files<T: AsRef<Path>>(
 
     // println!("Before writing");
 
-    let mut output_vcf = VcfFile::builder(&output_path.as_ref().with_extension("vcf"))
+    let output_vcf = VcfFile::builder(&output_path.as_ref().with_extension("vcf"))
         .will_be_deleted(true)
         .set_check_existence(false)
         .build()?;
