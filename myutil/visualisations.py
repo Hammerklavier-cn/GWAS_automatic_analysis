@@ -6,13 +6,14 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import polars as pl
 import seaborn as sns
 
 from Classes import FileManagement, Gender
 from myutil import small_tools
 
 # matplotlib.use('Agg')
-logger = small_tools.create_logger("MainLogger", level=logging.INFO)
+logger = small_tools.create_logger("MainLogger", level=logging.WARNING)
 
 
 def missing(
@@ -141,7 +142,8 @@ def hardy_weinberg(
     logger.info("Finished Calculation")
 
     # Draw histogram.
-    hwe = pd.read_csv(f"{input_name}.hwe", sep=r"\s+", usecols=lambda col: col in ["P"])
+    hwe = pd.read_csv(f"{input_name}.hwe", sep=r"\s+",
+                      usecols=lambda col: col in ["P"])
     plt.hist(hwe, bins=10)
     plt.xlabel("p value")
     plt.ylabel("Frequency / Intercept")
@@ -290,3 +292,153 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
                      file_name}_Manhattan.png"中')
     except Exception as e:
         logger.error(f"Error: {e}")
+
+
+def assoc_mperm_visualisation(
+    file_path: str,
+    output_path: str,
+    /,
+    *,
+    gender: Gender,
+    ethnic_name: str,
+    phenotype_name: str,
+    n: int,
+    alpha: float = 0.05,
+):
+    """
+    Visualise `plink --assoc mperm=<int>` result.
+
+    Two Manhattan plot and one QQ plot will be generated.
+
+    Manhattan plot:
+
+        One shows P values of permutation tests; SNPs with P value greater than
+        alpha will be marked.
+
+        The other shows P values of the assoc results. Threshold is alpha / n .
+
+
+    """
+    logger.info("Start visualising `--assoc mperm=<int>` result")
+
+    file_path = f"{file_path}.qassoc"
+    mperm_path = f"{file_path}.mperm"
+
+    if not os.path.exists(mperm_path):
+        raise FileNotFoundError(f"{file_path}.mperm not found.")
+
+    res_df: pl.DataFrame = pl.from_pandas(
+        pd.read_csv(file_path, sep=r"\s+", usecols=["SNP", "P"])  # type: ignore
+    )
+    perm_df: pl.DataFrame = pl.from_pandas(
+        pd.read_csv(mperm_path, sep=r"\s+", usecols=["SNP", "EMP2"])  # type: ignore
+    )
+    concat_df = res_df.join(perm_df, on="SNP", how="inner").with_row_index()
+    mperm_positive_df = concat_df.filter(pl.col("EMP2") < alpha)
+    assoc_positive_df = concat_df.filter(pl.col("P") < alpha / n)
+
+    # Manhattan Plot: permutation test
+    logger.debug("Plotting Manhattan plot: permutation test")
+    sns.set_theme("paper", style="white")
+    plt.figure(figsize=(10, 5), dpi=300)
+
+    # scatter
+    plt.scatter(
+        concat_df["index"],
+        -concat_df["EMP2"].log10(),
+        s=2,
+        c=-concat_df["EMP2"].log10(),
+        cmap="viridis",
+        marker="o",
+    )
+    # horizontal line
+    plt.axhline(y=-np.log10(alpha), color="red", linestyle="--")
+    # annotation
+    for row in mperm_positive_df.iter_rows(named=True):
+        plt.text(
+            row["index"],
+            -np.log10(row["EMP2"]),
+            row["SNP"],
+            rotation=30,
+            fontsize=10,
+            ha="left",
+            va="bottom",
+        )
+
+    plt.title(
+        f"Manhattan Plot of Permutation Test Result of {ethnic_name}, {
+        gender} on {phenotype_name}"
+    )
+    plt.colorbar(label=r"$-log_{10}P$-value")
+    # save
+    plt.tight_layout()
+    plt.savefig(f"{output_path}_Manhattan_mperm.png", dpi=600)
+    plt.close()
+
+    # Manhattan Plot: original assoc
+    logger.debug("Plotting Mantattan plot: original association result")
+    sns.set_theme("paper", style="white")
+    plt.figure(figsize=(10, 5))
+
+    # scatter
+    plt.scatter(
+        concat_df["index"],
+        -concat_df["P"].log10(),
+        s=2,
+        c=-concat_df["P"].log10(),
+        cmap="viridis",
+        marker="o",
+    )
+    # horizontal line
+    plt.axhline(y=-np.log10(alpha / n), color="red", linestyle="--")
+    # annotation
+    for row in assoc_positive_df.iter_rows(named=True):
+        plt.text(
+            row["index"],
+            -np.log10(row["P"]),
+            row["SNP"],
+            rotation=30,
+            fontsize=10,
+            ha="left",
+            va="bottom",
+        )
+
+    plt.title(
+        f"Manhattan Plot of Association Result of {
+              ethnic_name}, {gender} on {phenotype_name}"
+    )
+    plt.colorbar(label=r"$-log_{10}P$-value")
+    # save
+    plt.tight_layout()
+    plt.savefig(f"{output_path}_Manhattan_assoc.png", dpi=600)
+    plt.close()
+
+    # QQ plot
+    logger.debug("Plotting QQ plot")
+    sns.set_theme("paper", style="white")
+    plt.figure(figsize=(5, 5), dpi=300)
+    # Theoretical -log10(P) value
+    snp_num = concat_df.shape[0]
+    x = np.linspace(0.5 / snp_num, 1 - 0.5 / snp_num, snp_num)
+    sorted_p_values = -np.log10(concat_df["P"].sort(descending=False))
+    # Scatter
+    plt.scatter(
+        -np.log10(x), sorted_p_values, marker="^", facecolors="none", edgecolors="b"
+    )
+    # Add y=x line
+    plt.axline((0, 0), (1, 1), color="#E53528", lw=1)
+    # Label and title
+    plt.xlabel(r"Theoretical $-log_{10}P$ value")
+    plt.ylabel(r"Observed $-log_{10}P$ value")
+    plt.title(
+        f"QQ-Plot of Association Result of {ethnic_name}, {gender} on {phenotype_name}"
+    )
+    # save
+    plt.tight_layout()
+    plt.savefig(f"{output_path}_QQ.png", dpi=600)
+    plt.close()
+    logger.debug(
+        f'\
+已输出至："{output_path}_QQ.png" 和 "{output_path}_Manhattan_mperm.png" 和 \
+"{output_path}_Manhattan_assoc.png"中'
+    )
