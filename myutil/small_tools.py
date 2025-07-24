@@ -63,3 +63,9 @@ def create_logger(
         ch.setFormatter(formatter)
         logger.addHandler(ch)
     return logger
+
+def count_line(file_path: str) -> int:
+    # get the number of independent SNPs
+    with open(file_path) as reader:
+        return sum([1 for _ in reader])
+
