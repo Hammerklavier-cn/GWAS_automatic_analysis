@@ -80,6 +80,25 @@ def setup():
         "--divide-pop-by-gender", action="store_true",
         help="Whether or not to divide population by gender."
     )
+
+    assoc_group = parser.add_argument_group(
+        title="Association calculation options"
+    )
+    assoc_group.add_argument(
+        "--ld-correct", action="store_true",
+        help="Whether or not to use the number of independent SNPs from LD pruning result as the N value of Bonferroni correction."
+    )
+    assoc_group.add_argument(
+        "--perm", type=int, default=None, const=1_000_000,
+        help="\
+Whether or not to perform permutation test, and how many times permutation is performed. If no value is assigned with it, the default is 1_000_000. \
+Note that this procedure is computationally intensive (yet the implementation is efficient)."
+    )
+    assoc_group.add_argument(
+        "--alpha", type=float, default=0.05,
+        help="Bonferroni / permutation corrected alpha value, used for filtering positive SNPs."
+    )
+
     return parser
 
 def check(parser: ArgumentParser):
