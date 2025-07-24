@@ -2,11 +2,10 @@ numpy
 matplotlib
 openpyxl
 pandas
+pandas-stubs
 polars
 xlsxwriter
 fastexcel
 typing_extensions
-scipy
 seaborn
-pyinstaller
 deprecated
