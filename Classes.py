@@ -48,6 +48,10 @@ class FileManagement(object):
         self.gender_info_file_path: Optional[str] = os.path.realpath(args.gender) if args.gender is not None else None
         self.gender_reference_path: Optional[str] = os.path.realpath(args.gender_reference) if args.gender_reference is not None else None
         self.divide_pop_by_gender: bool = args.divide_pop_by_gender
+
+        self.alpha: int = args.alpha
+        self.calc_perm: int | None = args.perm
+        self.ld_correct_bonferroni: bool = args.ld_correct
         pass
 
     def source_standardisation(self) -> str:
