@@ -56,7 +56,9 @@ if __name__ == "__main__":
 
     # print(f"Original: {original_headers[2500:2550]}")
     # print(f"Target: {target_headers[:50]}")
-    print(f"Original: {original_headers[:10]}")
+    print(
+        f"Original: {f'{original_headers[:5]} ... {original_headers[-5:]}' if len(original_headers) > 10 else original_headers}"
+    )
     print(f"Selected: {kept_headers}")
 
     # sys.exit(0)
