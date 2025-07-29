@@ -88,7 +88,7 @@ def generate_quantitative_summary(
                     sig_qt_mean_results_list.append(sig_qt_mean_res)
 
     # concat results and write to files
-    logging.debug("saving qassoc summary to %s-q.tsv", output_prefix)
+    logging.info("saving qassoc summary to %s-q.tsv", output_prefix)
     concat_qassoc_results_df = pl.concat(
         concat_qassoc_results_list, how="vertical", rechunk=True
     )
@@ -96,7 +96,7 @@ def generate_quantitative_summary(
         f"{output_prefix}-q.tsv", separator="\t", include_header=True
     )
 
-    logging.debug(
+    logging.info(
         "saving significant qassoc summary to %s-q-significant.tsv", output_prefix
     )
     if len(sig_concat_qassoc_results_list) > 0:
@@ -107,11 +107,11 @@ def generate_quantitative_summary(
             f"{output_prefix}-q-significant.tsv", separator="\t", include_header=True
         )
     else:
-        logging.warning(
+        logging.info(
             "No significant results found, skipping %s-q-significant.tsv", output_prefix
         )
 
-    logging.debug("saving qt-means summary to %s-qt_means.tsv", output_prefix)
+    logging.info("saving qt-means summary to %s-qt_means.tsv", output_prefix)
     if len(qt_mean_results_list) > 0:
         concat_qt_mean_results_df = pl.concat(
             qt_mean_results_list, how="vertical", rechunk=True
@@ -120,11 +120,11 @@ def generate_quantitative_summary(
             f"{output_prefix}-qt_means.tsv", separator="\t", include_header=True
         )
     else:
-        logging.warning(
+        logging.info(
             "No qt_means results found, skipping %s-qt_means.tsv", output_prefix
         )
 
-    logging.debug(
+    logging.info(
         "saving significant qt-means summary to %s-qt_means-significant.tsv",
         output_prefix,
     )
@@ -138,7 +138,7 @@ def generate_quantitative_summary(
             include_header=True,
         )
     else:
-        logging.warning(
+        logging.info(
             "No significant qt_means results found, skipping %s-qt_means-significant.tsv",
             output_prefix,
         )
