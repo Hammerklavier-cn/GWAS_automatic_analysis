@@ -165,12 +165,10 @@ def ld_pruning(
     plink_path: str,
     input_path_name: str,
     save_path_name: str,
-    gender: Gender,
-    ethnic: str,
     window_size: int = 50,
     step_size: int = 5,
     r2_threshold: float = 0.2
-) -> str | None:
+) -> str:
     """
     Calculate linkage disequilibrium (LD).
 
@@ -202,7 +200,7 @@ def ld_pruning(
         command = [
             plink_path,
             "--bfile", input_path_name,
-            "--indep-pairwise", window_size, step_size, r2_threshold,
+            "--indep-pairwise", str(window_size), str(step_size), str(r2_threshold),
             "--out", save_path_name,
         ]
         subprocess.run(
@@ -212,7 +210,7 @@ def ld_pruning(
             check=True)
     except subprocess.CalledProcessError as e:
         logging.error(f"LD pruning failed with error code {e.returncode}")
-        return
+        raise e
     except Exception as e:
         logging.error("Unexpected error occurred: %s", str(e))
         sys.exit(1)
