@@ -6,7 +6,7 @@ from typing import Callable, Any
 
 from Classes import Gender
 from myutil.small_tools import count_line
-from myutil.visualisations import assoc_mperm_visualisation
+from myutil.visualisations import assoc_mperm_visualisation, assoc_visualisation
 from myutil.quality_control import ld_pruning
 
 
@@ -144,8 +144,18 @@ class Test03Visualisation(unittest.TestCase):
     )
     def test_09_assoc_visualisation(self):
 
-        if INDEPENDENT_SNP_NUMs == 0:
-            self.fail("More than one independent SNP is expected!")
+        assoc_visualisation(
+            "test_data/assoc_mperm.qassoc",
+            "test_data/visualisation/assoc",
+            gender=Gender.MALE,
+            ethnic="British",
+            phenotype="f.32820.0.0",
+            n=INDEPENDENT_SNP_NUMs,
+            alpha=0.05,
+        )
+
+    @timing_decorator
+    def test_10_mperm_visualisation(self):
 
         assoc_mperm_visualisation(
             os.path.join("test_data", "assoc_mperm"),
@@ -153,9 +163,8 @@ class Test03Visualisation(unittest.TestCase):
             gender=Gender.MALE,
             ethnic_name="British",
             phenotype_name="f.32820.0.0",
-            n=INDEPENDENT_SNP_NUMs,  # find this out before this function!
+            n=INDEPENDENT_SNP_NUMs,
         )
-        pass
 
     def tearDown(self):
         global CLEAN_UP
