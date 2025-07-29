@@ -176,7 +176,7 @@ def _concat_qassoc_mperm_mean(
         raise FileNotFoundError(f"File '{qassoc_result.qt_means_path}' not found.")
 
     qassoc_df = _parse_qassoc_file(qassoc_result.qassoc_path)
-    qassoc_df = qassoc_df.with_columns(pl.col("P").mul(1 / bonferroni_n).alias("P'"))
+    qassoc_df = qassoc_df.with_columns(pl.col("P").mul(bonferroni_n).alias("P'"))
 
     if qassoc_result.mperm_path is not None:
         mperm_df = _parse_mperm_file(qassoc_result.mperm_path).rename(
