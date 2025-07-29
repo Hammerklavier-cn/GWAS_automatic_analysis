@@ -54,7 +54,8 @@ class Test00EnvironmentSetup(unittest.TestCase):
     def setUp(self):
         super().setUp()
 
-    def test_find_plink(self):
+    @timing_decorator
+    def test_00_find_plink(self):
         global PLINK_PATH
 
         res = self.find_plink_path()
@@ -77,6 +78,7 @@ class Test02Analysis(unittest.TestCase):
         if not os.path.exists(os.path.join("test_data", "ld_prune")):
             os.mkdir(os.path.join("test_data", "ld_prune"))
 
+    @timing_decorator
     def test_01_ld_pruning(self):
         global PLINK_PATH
         global INDEPENDENT_SNP_NUMs
@@ -108,6 +110,7 @@ class Test02Analysis(unittest.TestCase):
             if not os.path.exists(file_path):
                 self.fail("Expected pruned file not found at {file_path}")
 
+    @timing_decorator
     def test_02_kept_line_count(self):
         global INDEPENDENT_SNP_NUMs
 
@@ -137,7 +140,12 @@ class Test03Visualisation(unittest.TestCase):
         if not os.path.exists(os.path.join("test_data", "visualisation")):
             os.mkdir(os.path.join("test_data", "visualisation"))
 
-    def test_10_mperm_visualisation(self):
+    @timing_decorator
+    @unittest.skipUnless(
+        os.path.exists("test_data/assoc_mperm.qassoc"),
+        "assoc_mperm.qassoc file not found",
+    )
+    def test_09_assoc_visualisation(self):
         global INDEPENDENT_SNP_NUMs
 
         if INDEPENDENT_SNP_NUMs == 0:
