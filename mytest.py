@@ -1,10 +1,38 @@
 import os, unittest
 import shutil
+import time
+import functools
+from typing import Callable, Any
 
 from Classes import Gender
 from myutil.small_tools import count_line
 from myutil.visualisations import assoc_mperm_visualisation
 from myutil.quality_control import ld_pruning
+
+
+def timing_decorator(func: Callable) -> Callable:
+    """
+    装饰器：用于测量并打印函数的执行时间
+
+    Args:
+        func (Callable): 需要被装饰的函数
+
+    Returns:
+        Callable: 装饰后的函数
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        # print(f"{func.__name__} 执行耗时: {execution_time:.4f} 秒")
+        print(f"{execution_time:.2f} s", end="\t", flush=True)
+        return result
+
+    return wrapper
+
 
 #
 # Flags
