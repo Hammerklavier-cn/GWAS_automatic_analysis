@@ -3,6 +3,7 @@ import sys
 import subprocess
 import logging
 from typing import Literal
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -216,7 +217,27 @@ def minor_allele_frequency(
 
 
 # 修改了关联性分析可视化的代码，能简单的在服务器上运行
-def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha: float = 0.05):
+def assoc_visualisation(
+    file_path: str,
+    output_path: str,
+    gender: Gender,
+    ethnic: str,
+    phenotype: str,
+    n: int | None = None,
+    alpha: float = 0.05,
+):
+    """Visualise association analysis result.
+
+    Args:
+        file_path (str): Path to the association result file (with .qassoc or .assoc extension).
+        output_path (str): Path to save the visualisations (without file extension).
+        gender (Gender): Gender of the sample.
+        ethnic (str): Ethnic group of the sample.
+        phenotype (str): Phenotype name.
+        n (int | None, optional): Number of samples to perform Bonferroni's correction. Defaults to None.
+        alpha (float, optional): Significance threshold. Defaults to 0.05.
+    """
+    mpl.use("Agg")  # Use non-interactive backend for matplotlib
     try:
         logger.info("开始关联性分析可视化")
 
@@ -230,7 +251,7 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
         a_m = pd.read_csv(file_path, engine="c",
                           sep=r"\s+", usecols=lambda col: col in ["SNP", "P"])
         a_m["ID"] = list(range(a_m.shape[0]))
-        threshold = alpha / a_m.shape[0]
+        threshold = alpha / a_m.shape[0] if n is None else alpha / n
 
         # colors = list(range(a_m.shape[0]))
         x = a_m["ID"]
@@ -253,8 +274,10 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
             plt.text(row_["ID"], -np.log10(row_["P"]), row_["SNP"],
                      rotation=30, fontsize=10, ha='left', va='bottom')  # 调整文本对齐方式
 
-        plt.title(f"Manhattan Plot of Assoc Result of {
-                  ethnic} {gender} on {phenotype}")
+        plt.title(
+            f"Manhattan Plot of Assoc Result of {
+                  ethnic} {gender} on {phenotype}"
+        )
         plt.colorbar(label=r'$-\log_{10}P-value$')
 
         # 调整边界
@@ -288,8 +311,10 @@ def assoc_visualisation(file_path, output_path, gender, ethnic, phenotype, alpha
         plt.tight_layout()
         plt.savefig(f"{output_path}_QQ.png", dpi=600)
         plt.close()
-        logger.debug(f'已输出至："{file_name}_QQ.png" 和 "{
-                     file_name}_Manhattan.png"中')
+        logger.debug(
+            f'已输出至："{file_name}_QQ.png" 和 "{
+                     file_name}_Manhattan.png"中'
+        )
     except Exception as e:
         logger.error(f"Error: {e}")
 
