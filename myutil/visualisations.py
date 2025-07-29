@@ -341,9 +341,25 @@ def assoc_mperm_visualisation(
         alpha will be marked.
 
         The other shows P values of the assoc results. Threshold is alpha / n .
-
-
+    
+    Parameters:
+        file_path (str):
+            Path to the `plink --assoc mperm=<int>` result (**without .qassoc extension**). 
+            The association result is expected to be in `.qassoc` format.
+        output_path (str):
+            Path to the output file (without file extension).
+        gender (Gender):
+            Gender of the sample.
+        ethnic_name (str):
+            ethnicity
+        phenotype_name (str):
+            Name of the phenotype.
+        n (int):
+            Number of samples, used for Bonferrini's correction.
+        alpha (float):
+            Significance threshold.
     """
+    mpl.use("Agg")  # Use non-interactive backend for matplotlib
     logger.info("Start visualising `--assoc mperm=<int>` result")
 
     file_path = f"{file_path}.qassoc"
