@@ -172,6 +172,108 @@ class Test03Visualisation(unittest.TestCase):
             shutil.rmtree(os.path.join("test_data", "visualisation"))
 
 
+class Test04Summarization(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        # check file existence
+        if not os.path.exists("test_data"):
+            raise FileNotFoundError("test_data folder does not exist")
+
+        for file in [
+            "test_data/assoc_mperm.qassoc",
+            "test_data/assoc_mperm.qassoc.mperm",
+            "test_data/assoc_mperm.qassoc.means",
+        ]:
+            if not os.path.exists(file):
+                raise FileNotFoundError(f"File {file} does not exist")
+
+        # make directorys
+        os.makedirs("test_data/summary", exist_ok=True)
+
+    @timing_decorator
+    def test_01_qassoc_mperm_qt_means_summary(self):
+        from myutil.summarization import generate_quantitative_summary, QassocResult
+
+        os.makedirs("test_data/summary/qassoc_mperm_qt-means", exist_ok=True)
+
+        generate_quantitative_summary(
+            [
+                QassocResult(
+                    qassoc_path="test_data/assoc_mperm.qassoc",
+                    mperm_path="test_data/assoc_mperm.qassoc.mperm",
+                    qt_means_path="test_data/assoc_mperm.qassoc.means",
+                    gender=Gender.MALE,
+                    ethnic_name="British",
+                    phenotype_name="f.32820.0.0",
+                )
+            ],
+            bonferroni_n=INDEPENDENT_SNP_NUMs,
+            alpha=0.05,
+            output_prefix="test_data/summary/qassoc_mperm_qt-means/summary",
+        )
+
+        assert os.path.exists("test_data/summary/qassoc_mperm_qt-means/summary-q.tsv")
+        assert os.path.exists("test_data/summary/qassoc_mperm_qt-means/summary-q-significant.tsv")
+        assert os.path.exists("test_data/summary/qassoc_mperm_qt-means/summary-qt_means.tsv")
+        assert os.path.exists("test_data/summary/qassoc_mperm_qt-means/summary-qt_means-significant.tsv")
+
+    @timing_decorator
+    def test_02_qassoc_mperm_summary(self):
+        from myutil.summarization import generate_quantitative_summary, QassocResult
+
+        os.makedirs("test_data/summary/qassoc_mperm", exist_ok=True)
+
+        generate_quantitative_summary(
+            [
+                QassocResult(
+                    qassoc_path="test_data/assoc_mperm.qassoc",
+                    mperm_path="test_data/assoc_mperm.qassoc.mperm",
+                    qt_means_path=None,
+                    gender=Gender.MALE,
+                    ethnic_name="British",
+                    phenotype_name="f.32820.0.0",
+                )
+            ],
+            bonferroni_n=INDEPENDENT_SNP_NUMs,
+            alpha=0.05,
+            output_prefix="test_data/summary/qassoc_mperm/summary",
+        )
+
+        assert os.path.exists("test_data/summary/qassoc_mperm/summary-q.tsv")
+        assert os.path.exists("test_data/summary/qassoc_mperm/summary-q-significant.tsv")
+
+    def test_03_qassoc_qt_means_summary(self):
+        from myutil.summarization import generate_quantitative_summary, QassocResult
+
+        os.makedirs("test_data/summary/qassoc_qt-means", exist_ok=True)
+
+        generate_quantitative_summary(
+            [
+                QassocResult(
+                    qassoc_path="test_data/assoc_mperm.qassoc",
+                    mperm_path=None,
+                    qt_means_path="test_data/assoc_mperm.qassoc.means",
+                    gender=Gender.MALE,
+                    ethnic_name="British",
+                    phenotype_name="f.32820.0.0",
+                )
+            ],
+            bonferroni_n=INDEPENDENT_SNP_NUMs,
+            alpha=0.05,
+            output_prefix="test_data/summary/qassoc_qt-means/summary",
+        )
+
+        assert os.path.exists("test_data/summary/qassoc_qt-means/summary-q.tsv")
+        assert os.path.exists("test_data/summary/qassoc_qt-means/summary-q-significant.tsv")
+        assert os.path.exists("test_data/summary/qassoc_qt-means/summary-qt_means.tsv")
+        assert os.path.exists("test_data/summary/qassoc_qt-means/summary-qt_means-significant.tsv")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if CLEAN_UP:
+            shutil.rmtree(os.path.join("test_data", "summary"))
+
+
 if __name__ == "__main__":
 
     # CLEAN_UP = True
