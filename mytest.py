@@ -166,8 +166,8 @@ class Test03Visualisation(unittest.TestCase):
             n=INDEPENDENT_SNP_NUMs,
         )
 
-    def tearDown(self):
-        global CLEAN_UP
+    @classmethod
+    def tearDownClass(cls) -> None:
         if CLEAN_UP:
             shutil.rmtree(os.path.join("test_data", "visualisation"))
 
