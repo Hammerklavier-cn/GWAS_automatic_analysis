@@ -94,8 +94,6 @@ class Test02Analysis(unittest.TestCase):
                     "test_data", "ld_prune", "STAB2_white_male_filtered_pruned"
                 )
             ),
-            Gender.MALE,
-            "White",
         )
 
         if res is None:
