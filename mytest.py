@@ -123,7 +123,6 @@ class Test02Analysis(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        global CLEAN_UP
         if CLEAN_UP:
             shutil.rmtree(os.path.join("test_data", "ld_prune"))
 
@@ -144,7 +143,6 @@ class Test03Visualisation(unittest.TestCase):
         "assoc_mperm.qassoc file not found",
     )
     def test_09_assoc_visualisation(self):
-        global INDEPENDENT_SNP_NUMs
 
         if INDEPENDENT_SNP_NUMs == 0:
             self.fail("More than one independent SNP is expected!")
