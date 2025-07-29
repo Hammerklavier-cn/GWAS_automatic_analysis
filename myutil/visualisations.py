@@ -410,7 +410,7 @@ def assoc_mperm_visualisation(
         f"Manhattan Plot of Permutation Test Result of {ethnic_name}, {
         gender} on {phenotype_name}"
     )
-    plt.colorbar(label=r"$-log_{10}P$-value")
+    plt.colorbar(label=r"$-log_{10}P$")
     # save
     plt.tight_layout()
     plt.savefig(f"{output_path}_Manhattan_mperm.png", dpi=600)
