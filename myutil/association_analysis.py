@@ -19,7 +19,8 @@ def quantitative_association(
     phenotype_info_path: str,
     output_name: str,
     gender: Gender,
-    ethnic: str
+    ethnic: str,
+    mperm: int | None = None,
 ) -> tuple[Gender, str, str, str] | None:
     """
     Performs a quantitative association analysis on the given input file.
@@ -46,13 +47,26 @@ def quantitative_association(
     """
     logger.info("Performing quantitative association analysis...")
     try:
-        command = [
-            plink_path,
-            "--bfile", input_name,
-            "--pheno", phenotype_info_path,
-            "--assoc",
-            "--out", output_name
-        ]
+        command = (
+            [
+                plink_path,
+                "--bfile",
+                input_name,
+                "--pheno",
+                phenotype_info_path,
+                "--assoc",
+                "qt-means",
+            ]
+            + ([f"mperm={mperm}"] if mperm is not None else [])
+            + ["--out", output_name]
+        )
+
+        match mperm:
+            case int():
+                assert len(command) == 10
+            case None:
+                assert len(command) == 9
+
         subprocess.run(
             command,
             check=True,
@@ -64,7 +78,8 @@ def quantitative_association(
         return
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        return
+        logging.error(f"Command line: {' '.join(command)}") # type: ignore
+        raise e
     logger.info("Quantitative association analysis completed.")
     return gender, ethnic, phenotype_name, output_name
 
