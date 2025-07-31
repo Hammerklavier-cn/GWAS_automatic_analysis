@@ -39,7 +39,9 @@ def timing_decorator(func: Callable) -> Callable:
 PLINK_PATH: str = ""
 # SNP_NUMs: int = 0
 INDEPENDENT_SNP_NUMs: int = 25
+PERM_COUNTS = 1_000_000
 CLEAN_UP: bool = False
+FAST = 0
 
 
 class Test00EnvironmentSetup(unittest.TestCase):
@@ -172,7 +174,78 @@ class Test03Visualisation(unittest.TestCase):
             shutil.rmtree(os.path.join("test_data", "visualisation"))
 
 
-class Test04Summarization(unittest.TestCase):
+class Test04AssociationAnalysis(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        for ext in ["bed", "bim", "fam"]:
+            file = f"test_data/STAB2_white_male_filtered.{ext}"
+
+        for file in [
+            f"test_data/STAB2_white_male_filtered.{ext}"
+            for ext in ["bed", "bim", "fam"]
+        ] + ["test_data/STAB2_standardised_f.30820.0.0.tsv"]:
+            if not os.path.exists(file):
+                raise FileNotFoundError(f"{file} not found.")
+
+        os.makedirs("test_data/assoc", exist_ok=True)
+
+    @timing_decorator
+    def test_01_qassoc_mperm(self):
+
+        if FAST >= 1:
+            self.skipTest("FAST >= 1")
+
+        from myutil.association_analysis import quantitative_association
+
+        os.makedirs("test_data/assoc/qassoc_mperm", exist_ok=True)
+
+        _ = quantitative_association(
+            PLINK_PATH,
+            "test_data/STAB2_white_male_filtered",
+            "f.30820",
+            "test_data/STAB2_standardised_f.30820.0.0.tsv",
+            "test_data/assoc/qassoc_mperm/STAB2_white_male_filtered_f.30820",
+            gender=Gender.MALE,
+            ethnic="British",
+            mperm=PERM_COUNTS,
+        )
+
+        for file in [
+            f"test_data/assoc/qassoc_mperm/STAB2_white_male_filtered_f.30820.{ext}"
+            for ext in ["qassoc", "qassoc.mperm", "qassoc.means"]
+        ]:
+            if not os.path.exists(file):
+                raise FileNotFoundError(f"{file} not found.")
+
+    def test_02_qassoc(self):
+
+        if FAST >= 2:
+            self.skipTest("Fast >= 2")
+
+        from myutil.association_analysis import quantitative_association
+
+        os.makedirs("test_data/assoc/qassoc", exist_ok=True)
+
+        _ = quantitative_association(
+            PLINK_PATH,
+            "test_data/STAB2_white_male_filtered",
+            "f.30820",
+            "test_data/STAB2_standardised_f.30820.0.0.tsv",
+            "test_data/assoc/qassoc/STAB2_white_male_filtered_f.30820",
+            gender=Gender.MALE,
+            ethnic="British",
+            mperm=None,
+        )
+
+        for file in [
+            f"test_data/assoc/qassoc_mperm/STAB2_white_male_filtered_f.30820.{ext}"
+            for ext in ["qassoc", "qassoc.means"]
+        ]:
+            if not os.path.exists(file):
+                raise FileNotFoundError(f"{file} not found.")
+
+
+class Test05Summarization(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # check file existence
