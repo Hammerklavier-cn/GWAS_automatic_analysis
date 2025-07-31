@@ -12,7 +12,7 @@ import polars as pl
 
 logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
-def quantitive_association(
+def quantitative_association(
     plink_path: str,
     input_name: str,
     phenotype_name: str,
