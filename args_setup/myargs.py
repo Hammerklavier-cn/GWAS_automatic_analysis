@@ -89,7 +89,7 @@ def setup():
         help="Whether or not to use the number of independent SNPs from LD pruning result as the N value of Bonferroni correction."
     )
     assoc_group.add_argument(
-        "--perm", type=int, default=None, const=1_000_000,
+        "--perm", type=int, default=None, const=1_000_000, nargs="?",
         help="\
 Whether or not to perform permutation test, and how many times permutation is performed. If no value is assigned with it, the default is 1_000_000. \
 Note that this procedure is computationally intensive (yet the implementation is efficient)."
