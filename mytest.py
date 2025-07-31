@@ -242,6 +242,7 @@ class Test04Summarization(unittest.TestCase):
         assert os.path.exists("test_data/summary/qassoc_mperm/summary-q.tsv")
         assert os.path.exists("test_data/summary/qassoc_mperm/summary-q-significant.tsv")
 
+    @timing_decorator
     def test_03_qassoc_qt_means_summary(self):
         from myutil.summarization import generate_quantitative_summary, QassocResult
 
