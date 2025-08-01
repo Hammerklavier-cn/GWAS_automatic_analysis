@@ -167,7 +167,8 @@ def ld_pruning(
     save_path_name: str,
     window_size: int = 50,
     step_size: int = 5,
-    r2_threshold: float = 0.2
+    r2_threshold: float = 0.2,
+    window_kb_modifier: bool = False
 ) -> str:
     """
     Calculate linkage disequilibrium (LD).
@@ -200,7 +201,7 @@ def ld_pruning(
         command = [
             plink_path,
             "--bfile", input_path_name,
-            "--indep-pairwise", str(window_size), str(step_size), str(r2_threshold),
+            "--indep-pairphase", f"{window_size}.kb" if window_kb_modifier else str(window_size), str(step_size), str(r2_threshold),
             "--out", save_path_name,
         ]
         subprocess.run(
