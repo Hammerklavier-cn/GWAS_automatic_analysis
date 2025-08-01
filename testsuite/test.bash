@@ -1,10 +1,10 @@
 plink_path="plink"
 file_name="../testsuite/STAB2.bed"
 ethnic="../testsuite/Ethnic background.xlsx"
-ethnic_ref="../myutil/ethnic_serial_reference.tsv"
-phenotype="../testsuite/blood_chemistry.csv"
+ethnic_ref="../myutil/ethnic_serial_reference_lite.tsv"
+phenotype="../testsuite/blood_chemistry_new.csv"
 gender="../testsuite/Sex.xlsx"
-gender_ref="../myutil/gender_serial_reference.csv"
+gender_ref="../myutil/gender_serial_reference.tsv"
 
 clear
 
@@ -24,7 +24,10 @@ python3 ../main.py \
     --loose-ethnic-filter \
     --ethnic-reference "${ethnic_ref}" \
     --gender "${gender}" \
-    --gender-reference "${gender_ref}"
+    --gender-reference "${gender_ref}" \
+    --divide-pop-by-gender \
+    --ld-correct \
+    --perm 10_000
 
 # after test finished
 # rm -r ./temp
