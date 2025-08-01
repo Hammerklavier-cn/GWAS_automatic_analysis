@@ -361,12 +361,12 @@ def _parse_qassoc_file(qassoc_path: str) -> pl.DataFrame:
     ).with_columns(
         pl.col("BP").cast(pl.Int64),
         pl.col("NMISS").cast(pl.UInt32),
-        pl.col("BETA").cast(pl.Float64),
-        pl.col("SE").cast(pl.Float64),
-        pl.col("R2").cast(pl.Float64),
-        pl.col("T").cast(pl.Float64),
-        pl.col("P").cast(pl.Float64),
-    )
+        pl.col("BETA").cast(pl.Float64, strict=False),
+        pl.col("SE").cast(pl.Float64, strict=False),
+        pl.col("R2").cast(pl.Float64, strict=False),
+        pl.col("T").cast(pl.Float64, strict=False),
+        pl.col("P").cast(pl.Float64, strict=False),
+    ).drop_nulls()
 
     return qassoc_df
 
