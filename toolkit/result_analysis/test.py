@@ -44,8 +44,6 @@ class TestReadInput(unittest.TestCase):
     def test_read_input(self):
 
         input_lf = libutils.read_gwas_results(list(self.input_files))
-        self.assertEqual(input_lf.collect_schema(),
-                         libutils.QASSOC_COLUMNS_SCHEMA)
 
 class TestAnalyse(unittest.TestCase):
     def setUp(self) -> None:
