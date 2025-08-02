@@ -3,6 +3,8 @@ import argparse
 
 from enum import Enum, auto
 
+__version__ = "0.2.1"
+
 
 class AnalysisOption(Enum):
     SNP_FREQUENCY_RANK = auto()
@@ -67,7 +69,7 @@ def get_parser():
     _ = parser.add_argument(
         "--version", "-V",
         action="version",
-        version="%(prog)s 0.2.0"
+        version=f"%(prog)s {__version__}"
     )
 
     parser_check(parser)
