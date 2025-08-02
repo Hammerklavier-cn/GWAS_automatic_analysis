@@ -16,9 +16,15 @@ class QassocColumns(Enum):
     R2 = "R2"
     T = "T"
     P = "P"
+    Pn = "P'"
+    PERM_P_1 = "PERM_P_1"
+    PERM_P_2 = "PERM_P_2"
     GENDER = "gender"
     ETHNIC = "ethnic"
     PHENOTYPE = "phenotype"
+    G11 = "G11"
+    G12 = "G12"
+    G22 = "G22"
 
 
 QASSOC_COLUMNS_SCHEMA = {
@@ -31,9 +37,15 @@ QASSOC_COLUMNS_SCHEMA = {
     QassocColumns.R2.value: pl.Float64,
     QassocColumns.T.value: pl.Float64,
     QassocColumns.P.value: pl.Float64,
+    QassocColumns.Pn.value: pl.Float64,
+    QassocColumns.PERM_P_1: pl.Float64,
+    QassocColumns.PERM_P_2: pl.Float64,
     QassocColumns.GENDER.value: pl.String,
     QassocColumns.ETHNIC.value: pl.String,
-    QassocColumns.PHENOTYPE.value: pl.String
+    QassocColumns.PHENOTYPE.value: pl.String,
+    QassocColumns.G11.value: pl.Float64,
+    QassocColumns.G12.value: pl.Float64,
+    QassocColumns.G22.value: pl.Float64,
 }
 
 
@@ -51,12 +63,14 @@ NULL_VALUES = ["NA", "Na", "na", "NAN", "NaN", "Nan", "nan", "NULL", "null"]
 
 
 def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
-    results_df = pl.DataFrame(
-        schema=QASSOC_COLUMNS_SCHEMA,
-    ).with_columns(
-        pl.col(QassocColumns.P.value).cast(
-            pl.Float64, strict=False).drop_nulls()
-    )
+    # results_df = pl.DataFrame(
+    #     schema=QASSOC_COLUMNS_SCHEMA,
+    # ).with_columns(
+    #     pl.col(QassocColumns.P.value).cast(
+    #         pl.Float64, strict=False).drop_nulls()
+    # )
+
+    result_df_list: list[pl.DataFrame] = []
 
     for file_path in file_paths:
         result_df = pl.read_csv(
@@ -64,16 +78,59 @@ def read_gwas_results(file_paths: list[str]) -> pl.LazyFrame:
             separator="\t" if file_path.endswith(".tsv") else ",",
             has_header=True,
             null_values=NULL_VALUES,
-            schema_overrides=QASSOC_COLUMNS_SCHEMA
         )
         if result_df.is_empty():
             continue
-        elif result_df.columns != list(QASSOC_COLUMNS_SCHEMA.keys()):
-            print(f"Skipping {file_path} due to mismatched columns: "
-                  "Expected {QASSOC_COLUMNS.keys()}, got {result_df.columns}")
-            continue
 
-        results_df = results_df.vstack(result_df)
+        result_df_list.append(result_df)
+
+    results_df: pl.DataFrame | None = None
+    mutual_header: list[str] | None = None
+    for result_df in result_df_list:
+        header = result_df.columns
+        match mutual_header, header:
+            case None, list():
+                mutual_header = [
+                    s for s in header
+                    if s in [
+                        column.value for column in QassocColumns
+                    ]
+                ]
+                results_df = result_df.select([
+                    pl.col(s).cast(QASSOC_COLUMNS_SCHEMA[s], strict=False)
+                    for s in mutual_header
+                ]).drop_nulls()
+
+            case list(), list():
+                assert results_df is not None
+
+                verified_header = [
+                    s for s in header
+                    if s in [
+                        column.value for column in QassocColumns
+                    ]
+                ]
+                old_mutual_header = mutual_header
+                mutual_header = [
+                    s for s in verified_header
+                    if s in old_mutual_header
+                ]
+
+                if mutual_header != old_mutual_header:
+                    results_df = results_df.select(mutual_header)
+
+                results_df.vstack(
+                    result_df.select(
+                        mutual_header
+                    ).cast(
+                        {
+                            col: QASSOC_COLUMNS_SCHEMA[col]
+                            for col in mutual_header
+                        }
+                    )
+                )
+
+    assert results_df is not None
 
     results_lf = results_df.rechunk().lazy()
 
