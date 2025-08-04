@@ -39,7 +39,7 @@ def timing_decorator(func: Callable) -> Callable:
 PLINK_PATH: str = ""
 # SNP_NUMs: int = 0
 INDEPENDENT_SNP_NUMs: int = 25
-PERM_COUNTS = 1_000_000
+PERM_COUNTS = 10_000
 CLEAN_UP: bool = False
 FAST = 0
 
