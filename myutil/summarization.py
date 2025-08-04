@@ -27,11 +27,11 @@ class QassocResult:
     gender: Gender
     ethnic_name: str
     phenotype_name: str
+    bonferroni_n: int
 
 
 def generate_quantitative_summary(
     qassoc_results: list[QassocResult],
-    bonferroni_n: int,
     alpha: float,
     output_prefix: str,
 ) -> None:
@@ -51,9 +51,7 @@ def generate_quantitative_summary(
     sig_qt_mean_results_list: list[pl.DataFrame] = []
 
     for qassoc_res in qassoc_results:
-        concat_qassoc_res, qt_mean_res = _concat_qassoc_mperm_mean(
-            qassoc_res, bonferroni_n
-        )
+        concat_qassoc_res, qt_mean_res = _concat_qassoc_mperm_mean(qassoc_res)
 
         # Append `concat_qassoc_results`
         match concat_qassoc_header:
@@ -146,13 +144,11 @@ def generate_quantitative_summary(
 
 def _concat_qassoc_mperm_mean(
     qassoc_result: QassocResult,
-    bonferroni_n: int,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None]:
     """Join *.qassoc*, *.qassoc.mperm* (if exists), *.qassoc.mean* (if exists) files
 
     Args:
         qassoc_result (QassocResult): QassocResult object.
-        bonferroni_n (int): Bonferroni's correction factor.
     """
     logging.debug(
         "Generating qassoc summary for %s %s, %s",
@@ -176,7 +172,13 @@ def _concat_qassoc_mperm_mean(
         raise FileNotFoundError(f"File '{qassoc_result.qt_means_path}' not found.")
 
     qassoc_df = _parse_qassoc_file(qassoc_result.qassoc_path)
-    qassoc_df = qassoc_df.with_columns(pl.col("P").mul(bonferroni_n).alias("P'"))
+    try:
+        qassoc_df = qassoc_df.with_columns(
+            pl.col("P").mul(qassoc_result.bonferroni_n).alias("P'")
+        )
+    except Exception as e:
+        print(qassoc_df)
+        raise e
 
     if qassoc_result.mperm_path is not None:
         mperm_df = _parse_mperm_file(qassoc_result.mperm_path).rename(

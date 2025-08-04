@@ -278,9 +278,9 @@ class Test05Summarization(unittest.TestCase):
                     gender=Gender.MALE,
                     ethnic_name="British",
                     phenotype_name="f.32820.0.0",
+                    bonferroni_n=INDEPENDENT_SNP_NUMs
                 )
             ],
-            bonferroni_n=INDEPENDENT_SNP_NUMs,
             alpha=0.05,
             output_prefix="test_data/summary/qassoc_mperm_qt-means/summary",
         )
@@ -305,9 +305,9 @@ class Test05Summarization(unittest.TestCase):
                     gender=Gender.MALE,
                     ethnic_name="British",
                     phenotype_name="f.32820.0.0",
+                    bonferroni_n=INDEPENDENT_SNP_NUMs
                 )
             ],
-            bonferroni_n=INDEPENDENT_SNP_NUMs,
             alpha=0.05,
             output_prefix="test_data/summary/qassoc_mperm/summary",
         )
@@ -330,9 +330,9 @@ class Test05Summarization(unittest.TestCase):
                     gender=Gender.MALE,
                     ethnic_name="British",
                     phenotype_name="f.32820.0.0",
+                    bonferroni_n=INDEPENDENT_SNP_NUMs
                 )
             ],
-            bonferroni_n=INDEPENDENT_SNP_NUMs,
             alpha=0.05,
             output_prefix="test_data/summary/qassoc_qt-means/summary",
         )
