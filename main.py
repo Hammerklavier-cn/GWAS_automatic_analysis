@@ -72,21 +72,6 @@ if __name__ == "__main__":
     # output_cache: list = []
     output_queue = Queue()
 
-    # get (independent) SNPs
-    print("Getting SNP number...")
-    logger.info("Getting independent SNPs...")
-    os.makedirs("ld_pruning", exist_ok=True)
-    indep_in_path = quality_control.ld_pruning(
-        fm.plink,
-        output,
-        "ld_pruning/indepSNP",
-        window_size=250,
-        window_kb_modifier=True
-    )
-    indep_snp_num = small_tools.count_line(f"{indep_in_path}.prune.in")
-    logger.info("Getting total SNPs...")
-    snp_sum = small_tools.count_line(f"{output}.bim")
-
     # complete gender information in .fam and divide population into male and female groups.
     print(fm.gender_info_file_path,
           fm.gender_reference_path, fm.divide_pop_by_gender)
@@ -313,6 +298,38 @@ if __name__ == "__main__":
     print()
     logger.info("Filtering MAF finished.")
 
+    ### Calculate LD
+    # get (independent) SNPs
+    print("Getting SNP number...")
+    logger.info("Getting independent SNPs...")
+    os.makedirs("ld_pruning", exist_ok=True)
+
+    if fm.ld_correct_bonferroni:
+        with ProcessPoolExecutor(max_workers=cpu_count()) as pool:
+            futures_dict = {
+                f"{gender}-{ethnic}": pool.submit(
+                    quality_control.ld_pruning,
+                    fm.plink,
+                    file_prefix,
+                    f"ld_pruning/indepSNP_{gender}-{ethnic}",
+                    window_size=500
+                ) for gender, ethnic, file_prefix in outputs
+            }
+            indep_in_paths = {
+                key: f"{prefix.result()}.prune.in"
+                for key, prefix in futures_dict.items()
+            }
+            indep_snp_sums = {
+                key: small_tools.count_line(f"{prefix.result()}.prune.in")
+                for key, prefix in futures_dict.items()
+            }
+    else:
+        snp_sums = {
+            f"{gender}-{ethnic}": small_tools.count_line(f"{prefix}.bim")
+            for gender, ethnic, prefix in outputs
+        }
+
+
     # ## 4. Multi-dimensional scaling
     # ### LD pruning
     # logger.info("Executing LD pruning...")
@@ -524,7 +541,9 @@ if __name__ == "__main__":
                     gender=output[0],
                     ethnic_name=output[1],
                     phenotype_name=output[2],
-                    n=indep_snp_num if fm.ld_correct_bonferroni else snp_sum,
+                    n=indep_snp_sums[f"{output[0]}-{output[1]}"] # type: ignore
+                        if fm.ld_correct_bonferroni
+                        else snp_sums[f"{output[0]}-{output[1]}"], # type: ignore
                     alpha=fm.alpha,
                 )
             else:
@@ -535,11 +554,14 @@ if __name__ == "__main__":
                         "assoc_pictures", f"{os.path.basename(output[3])}_assoc"
                     ),
                     *output[0:3],
-                    n=indep_snp_num if fm.ld_correct_bonferroni else snp_sum,
+                    n=indep_snp_sums[f"{output[0]}-{output[1]}"] # type: ignore
+                        if fm.ld_correct_bonferroni
+                        else snp_sums[f"{output[0]}-{output[1]}"], # type: ignore
                     alpha=fm.alpha,
                 )
 
     ## 4. Generate summary
+    print("")
     print("Generating summary...")
     os.mkdir("summary")
 
@@ -552,9 +574,11 @@ if __name__ == "__main__":
                 gender,
                 ethnic,
                 phenotype,
+                bonferroni_n=indep_snp_sums[f"{output[0]}-{output[1]}"] # type: ignore
+                    if fm.ld_correct_bonferroni
+                    else snp_sums[f"{output[0]}-{output[1]}"], # type: ignore
             ) for (gender, ethnic, phenotype, out_prefix) in outputs2
         ],
-        bonferroni_n=indep_snp_num if fm.ld_correct_bonferroni else snp_sum,
         alpha=fm.alpha,
         output_prefix="summary"
     )
