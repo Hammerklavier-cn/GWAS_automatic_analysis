@@ -1,0 +1,19 @@
+FID,IID
+Family 1,Person A
+Family 1,Person B
+Family 2,Person A
+Family 3,Person A
+Family 3,Person B
+Family 3,Person C
+Family 3,Person D
+Family 3,Person E
+Family 4,Person X
+Family_5,Person_Z
+participant01,participant01
+participant02,participant02
+participant03,participant03
+participant04,participant04
+participant_infinite,participant_infinite
+null,null
+nan,nan
+"participant_quoted","participant_quoted"
