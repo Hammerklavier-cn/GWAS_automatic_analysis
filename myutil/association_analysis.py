@@ -12,6 +12,60 @@ import polars as pl
 
 logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
+def binary_association(
+    plink_path: str,
+    input_name: str,
+    phenotype_info_path: str,
+    output_prefix: str,
+    mperm: int | None = None,
+) -> None:
+    """
+    Perform a binary association analysis on the given input file.
+
+    The function uses the plink command-line tool to perform the analysis.
+
+    It will generate a association result file named `output_name.assoc`.
+    If `mperm` is not None, it will perform a permutation test and generate
+    a permutation result file named `output_name.assoc.mperm`.
+
+    Args:
+        plink_path (str):
+            Path to the plink executable file.
+        input_name (str):
+            Name of the input file.
+        phenotype_info_path (str):
+            Path to the phenotype information file.
+        output_prefix (str):
+            Prefix for the output files.
+        mperm (int | None):
+            Number of permutations to perform.
+
+    """
+
+    logging.info("Performing binary association analysis...")
+    command = [
+        plink_path,
+        "--bfile",
+        input_name,
+        "--pheno",
+        phenotype_info_path,
+        "--assoc",
+    ] + (
+        [] if mperm is None
+        else [
+            "--mperm",
+            str(mperm)
+        ]
+    ) + [
+        "--out",
+        output_prefix
+    ]
+
+    match
+
+
+    pass
+
 def quantitative_association(
     plink_path: str,
     input_name: str,
@@ -27,7 +81,7 @@ def quantitative_association(
 
     The function uses the plink command-line tool to perform the analysis.
 
-    It will generate a association result file named `output_name.qaaoc`
+    It will generate a association result file named `output_name.qassoc`
 
     Args:
         plink_path (str):
@@ -83,60 +137,60 @@ def quantitative_association(
     logger.info("Quantitative association analysis completed.")
     return gender, ethnic, phenotype_name, output_name
 
-def assoc_perm(
-    plink_path: str,
-    input_name: str,
-    phenotype_info_path: str,
-    output_name: str,
-    *,
-    mperm: int | None = None,
-) -> bool:
-    """
-    Perform a binary/quantitative association and permutation tests on the given
-    input plink file and phenotype file. Plink command-line tool is used to
-    perform the analysis.
+# def assoc_perm(
+#     plink_path: str,
+#     input_name: str,
+#     phenotype_info_path: str,
+#     output_name: str,
+#     *,
+#     mperm: int | None = None,
+# ) -> bool:
+#     """
+#     Perform a binary/quantitative association and permutation tests on the given
+#     input plink file and phenotype file. Plink command-line tool is used to
+#     perform the analysis.
 
-    Note:
-        According to plink manual, the calculation is very effective and highly
-        paralleled, yet consumes great amount of computational resource.
+#     Note:
+#         According to plink manual, the calculation is very effective and highly
+#         paralleled, yet consumes great amount of computational resource.
 
-    Args:
-        plink_path (str):
-            Path to plink executable.
-        input_name (str):
-           Name of the input file. Note that the file is of plink binary format yet the
-           name does not contain file extension.
-        phenotype_info_path (str):
-            Path to the phenotype data file.
-        output_name (str):
-            Name of the output file. File extension should be excluded.
+#     Args:
+#         plink_path (str):
+#             Path to plink executable.
+#         input_name (str):
+#            Name of the input file. Note that the file is of plink binary format yet the
+#            name does not contain file extension.
+#         phenotype_info_path (str):
+#             Path to the phenotype data file.
+#         output_name (str):
+#             Name of the output file. File extension should be excluded.
 
-    Returns:
-        res_flag (bool):
-            True if the function is performed successfully, otherwise False.
-    """
-    logger.info("Performing quantitative association analysis with permutation tests.")
-    command = [
-        plink_path,
-        "--bfile", input_name,
-        "--pheno", phenotype_info_path,
-        "--assoc", f"mperm={mperm}" if mperm else "perm",
-        "--out", output_name,
-    ]
-    try:
-        subprocess.run(
-            command,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"Error occurred while running plink --assoc: {e}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred while running plink --assoc: {e}")
-        return False
-    return True
+#     Returns:
+#         res_flag (bool):
+#             True if the function is performed successfully, otherwise False.
+#     """
+#     logger.info("Performing quantitative association analysis with permutation tests.")
+#     command = [
+#         plink_path,
+#         "--bfile", input_name,
+#         "--pheno", phenotype_info_path,
+#         "--assoc", f"mperm={mperm}" if mperm else "perm",
+#         "--out", output_name,
+#     ]
+#     try:
+#         subprocess.run(
+#             command,
+#             check=True,
+#             stdout=subprocess.DEVNULL,
+#             stderr=subprocess.DEVNULL,
+#         )
+#     except subprocess.CalledProcessError as e:
+#         logger.warning(f"Error occurred while running plink --assoc: {e}")
+#         return False
+#     except Exception as e:
+#         print(f"An unexpected error occurred while running plink --assoc: {e}")
+#         return False
+#     return True
 
 def result_filter(
     input_path: str,

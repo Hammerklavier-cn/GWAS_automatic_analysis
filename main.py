@@ -407,121 +407,70 @@ if __name__ == "__main__":
 
     ## The following implementation does not support covariates and will be deprecated.
 
-    if mperm := fm.calc_perm:
-        # for pheno_index, pheno_file in enumerate(pheno_files):
-        #     for(file_index, (gender, ethnic, file)) in enumerate(outputs):
-        #         progress_bar.print_progress(
-        #             f"Calc assoc with perm between {
-        #                 os.path.basename(pheno_file[0])
-        #             } and {os.path.basename(file)}",
-        #             len(outputs) * len(pheno_files),
-        #             pheno_index * len(outputs) + file_index + 1
-        #         )
-        #         output_name = os.path.join(
-        #             "assoc_results",
-        #             f"{os.path.basename(file)}_{
-        #                 pheno_file[0]}",
-        #         )
-        #         res = association_analysis.quantitative_association(
-        #             fm.plink,
-        #             file,
-        #             pheno_file[0],
-        #             pheno_file[1],
-        #             output_name,
-        #             gender=gender,
-        #             ethnic=ethnic,
-        #             mperm=mperm
-        #         )
-        #         if res:
-        #             output_cache2.append(
-        #                 (gender, ethnic, pheno_file[0], output_name,)
-        #             )
 
-        with ProcessPoolExecutor(max_workers=int(cpu_count() / 10)) as pool:
-            futures = []
-            for pheno_index, pheno_file in enumerate(pheno_files):
-                for(file_index, (gender, ethnic, file)) in enumerate(outputs):
-                    pool.submit(
-                        progress_bar.print_progress,
-                            f"Calc assoc with perm between {
-                                os.path.basename(pheno_file[0])
-                            } and {os.path.basename(file)}",
-                            len(outputs) * len(pheno_files),
-                            pheno_index * len(outputs) + file_index + 1
-                        )
-                    output_name = os.path.join(
-                        "assoc_results",
-                        f"{os.path.basename(file)}_{
-                            pheno_file[0]}",
-                    )
-                    future = pool.submit(
-                        association_analysis.assoc_perm,
-                        fm.plink,
-                        file,
-                        pheno_file[1],
-                        output_name,
-                        mperm=mperm
-                    )
-                    futures.append(future)
-                    # if res:
-                    output_cache2.append(
-                        (gender, ethnic, pheno_file[0], output_name,)
-                    )
-            output_cache2 = [output_cache2[i] for i, future in enumerate(futures) if future.result()==True]
+    for pheno_index, pheno_file in enumerate(pheno_files):
+        for(file_index, (gender, ethnic, file)) in enumerate(outputs):
+            progress_bar.print_progress(
+                f"Calc assoc with perm between {
+                    os.path.basename(pheno_file[0])
+                } and {os.path.basename(file)}",
+                len(outputs) * len(pheno_files),
+                pheno_index * len(outputs) + file_index + 1
+            )
+            output_name = os.path.join(
+                "assoc_results",
+                f"{os.path.basename(file)}_{
+                    pheno_file[0]}",
+            )
+            res = association_analysis.quantitative_association(
+                fm.plink,
+                file,
+                pheno_file[0],
+                pheno_file[1],
+                output_name,
+                gender=gender,
+                ethnic=ethnic,
+                mperm=fm.calc_perm
+            )
+            if res:
+                output_cache2.append(
+                    (gender, ethnic, pheno_file[0], output_name,)
+                )
+        # with ProcessPoolExecutor(max_workers=2) as pool:
+        #             futures = []
+        #             for pheno_index, pheno_file in enumerate(pheno_files):
+        #                 for(file_index, (gender, ethnic, file)) in enumerate(outputs):
+        #                     pool.submit(
+        #                         progress_bar.print_progress,
+        #                             f"Calc assoc with perm between {
+        #                                 os.path.basename(pheno_file[0])
+        #                             } and {os.path.basename(file)}",
+        #                             len(outputs) * len(pheno_files),
+        #                             pheno_index * len(outputs) + file_index + 1
+        #                         )
+        #                     output_name = os.path.join(
+        #                         "assoc_results",
+        #                         f"{os.path.basename(file)}_{
+        #                             pheno_file[0]}",
+        #                     )
+        #                     future = pool.submit(
+        #                         association_analysis.assoc_perm,
+        #                         fm.plink,
+        #                         file,
+        #                         pheno_file[1],
+        #                         output_name,
+        #                         mperm=mperm
+        #                     )
+        #                     futures.append(future)
+        #                     # if res:
+        #                     output_cache2.append(
+        #                         (gender, ethnic, pheno_file[0], output_name,)
+        #                     )
+        #             output_cache2 = [output_cache2[i] for i, future in enumerate(futures) if future.result()==True]
 
 
-    else:
-        with ProcessPoolExecutor(max_workers=int(cpu_count()/1.5)) as pool:
-            futures: list[FutureClass] = []
-            for pheno_file in pheno_files:
-                for output in outputs:
-                    ## Calculate association
-                    pool.submit(
-                        progress_bar.print_progress,
-                        f"Calculating association between {os.path.basename(pheno_file[0])} and {
-                            os.path.basename(output[2])}...",
-                        len(outputs) * len(pheno_files),
-                        pheno_files.index(pheno_file) * len(outputs)
-                            + outputs.index(output)
-                            + 1,
-                    )
-                    futures.append(
-                        pool.submit(
-                            association_analysis.quantitative_association,
-                            fm.plink,
-                            output[2],
-                            pheno_file[0],
-                            pheno_file[1],
-                            os.path.join(
-                                "assoc_results",
-                                f"{os.path.basename(output[2])}_{
-                                    os.path.splitext(os.path.basename(pheno_file[1]))[0]}",
-                            ),
-                            output[0],
-                            output[1],
-                            mperm=fm.calc_perm
-                        )
-                    )
-
-            output_cache2: list[tuple[Gender, str, str, str]] = [
-                future.result()
-                for future in as_completed(futures)
-                if future.result() is not None
-            ]
     outputs2 = output_cache2
     output_cache2 = []
-
-    # for output in outputs:
-    #     progress_bar.print_progress(
-    #         f"Visualising association results of {os.path.basename(output[2])}...",
-    #         len(outputs),
-    #         outputs.index(output) + 1
-    #     )
-    #     vislz.assoc_visualisation(
-    #         f"{output[3]}.qassoc",
-    #         os.path.join("assoc_pictures", f"{os.path.basename(output[3])}_assoc"),
-    #         output[0], output[1], output[2]
-    #     )
 
     print("")
     print("Visualising association result")
@@ -534,7 +483,7 @@ if __name__ == "__main__":
                 len(outputs2) + 1,
                 outputs2.index(output)
             )
-            if mperm:
+            if fm.calc_perm:
                 pool.submit(
                     vislz.assoc_mperm_visualisation,
                     f"{output[3]}",
@@ -583,127 +532,6 @@ if __name__ == "__main__":
         alpha=fm.alpha,
         output_prefix="summary"
     )
-
-    # if perm := fm.calc_perm:
-
-    #     pass
-
-    # elif fm.ld_correct_bonferroni:
-    #     pass
-
-    # else:
-    #     qassoc_df: Optional[pl.DataFrame] = None
-    #     assoc_df: Optional[pl.DataFrame] = None
-
-    #     for output in outputs2:
-    #         progress_bar.print_progress(
-    #             f"Filtering {output[3]}", len(outputs2), outputs2.index(output)
-    #         )
-    #         res = association_analysis.result_filter(
-    #             output[3],
-    #             os.path.join(
-    #                 "./summary", f"{os.path.basename(output[3])}_summary.csv"),
-    #             output[0], output[1], output[2],
-    #             alpha=0.05,
-    #             adjust_alpha_by_quantity=True
-    #         )
-    #         if res is None:
-    #             continue
-    #         if res[3] == "assoc":
-    #             if assoc_df is None:
-    #                 assoc_df = res[4]
-    #             else:
-    #                 assoc_df.vstack(res[4], in_place=True)
-    #         elif res[3] == "qassoc":
-    #             if qassoc_df is None:
-    #                 qassoc_df = res[4]
-    #             else:
-    #                 qassoc_df.vstack(res[4], in_place=True)
-
-    #     if qassoc_df is not None:
-    #         qassoc_df.unique().write_csv(
-    #             "summary-q_adjusted.tsv",
-    #             separator="\t",
-    #             include_header=True
-    #         )
-    #     if assoc_df is not None:
-    #         assoc_df.unique().write_csv(
-    #             "summary-b_adjusted.tsv",
-    #             separator="\t",
-    #             include_header=True
-    #         )
-
-    #     for output in outputs2:
-    #         progress_bar.print_progress(
-    #             f"Filtering {output[3]}", len(outputs2), outputs2.index(output)
-    #         )
-    #         res = association_analysis.result_filter(
-    #             output[3],
-    #             os.path.join(
-    #                 "./summary", f"{os.path.basename(output[3])}_summary.csv"),
-    #             output[0], output[1], output[2],
-    #             alpha=0.05,
-    #             adjust_alpha_by_quantity=False
-    #         )
-    #         if res is None:
-    #             continue
-    #         if res[3] == "assoc":
-    #             if assoc_df is None:
-    #                 assoc_df = res[4]
-    #             else:
-    #                 assoc_df.vstack(res[4], in_place=True)
-    #         elif res[3] == "qassoc":
-    #             if qassoc_df is None:
-    #                 qassoc_df = res[4]
-    #             else:
-    #                 qassoc_df.vstack(res[4], in_place=True)
-
-    #     if qassoc_df is not None:
-    #         qassoc_df.write_csv(
-    #             "summary-q.tsv",
-    #             separator="\t",
-    #             include_header=True
-    #         )
-
-    #     if assoc_df is not None:
-    #         assoc_df.write_csv(
-    #             "summary-b.tsv",
-    #             separator="\t",
-    #             include_header=True
-    #         )
-
-    # with open("summary.tsv", "w") as f:
-    #     flag = False
-    #     colomns = ["CHR","SNP","BP","NMISS","BETA","SE","R2","T","P","gender","ethnic","phenotype"]
-    #     f.write("{}\n".format('\t'.join(colomns)))
-    #     for output in outputs:
-    #         progress_bar.print_progress(
-    #             f"Filtering {output[3]}", len(outputs), outputs.index(output)
-    #         )
-    #         res = association_analysis.result_filter_old(
-    #             output[3],
-    #             os.path.join("./summary", f"{os.path.basename(output[3])}_summary.csv"),
-    #             output[0],output[1],output[2]
-    #         )
-    #         if res is None:
-    #             continue
-    #         res_df = res[3]
-    #         res_df["gender"] = output[0]
-    #         res_df["ethnic"] = output[1]
-    #         res_df["phenotype"] = output[2]
-    #         # if flag is False:
-    #         #     flag = True
-    #         #     print(res_df)
-    #         res_df.to_csv(
-    #             f, sep="\t", mode="a", header=False, index=False
-    #         )
-    # ### sort summary.tsv by P-value
-    # summary_df = pd.read_csv("summary.tsv", sep="\t", index_col=False)
-    # summary_df.sort_values(by="P", inplace=True)
-    # print(summary_df)
-
-    # summary_df.to_csv("summary.tsv", sep="\t", mode="w", header=True, index=False)
-    # summary_df.to_sql("summary", sqlite3.Connection("./summary.db"), if_exists="replace", index=False, chunksize=100, method='multi')
 
     '''for pheno_file in pheno_files:
         for output in outputs:
