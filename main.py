@@ -436,7 +436,7 @@ if __name__ == "__main__":
             #         output_cache2.append(
             #             (gender, ethnic, pheno_file[0], output_name,)
             #         )
-            with ProcessPoolExecutor(max_workers=int(cpu_count()*2/3)) as pool:
+            with ProcessPoolExecutor(max_workers=int(cpu_count() / 10)) as pool:
                 futures = []
                 for pheno_index, pheno_file in enumerate(pheno_files):
                     for(file_index, (gender, ethnic, file)) in enumerate(outputs):
