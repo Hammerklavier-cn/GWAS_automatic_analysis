@@ -409,64 +409,64 @@ if __name__ == "__main__":
 
     if mperm := fm.calc_perm:
         for pheno_index, pheno_file in enumerate(pheno_files):
-            for(file_index, (gender, ethnic, file)) in enumerate(outputs):
-                progress_bar.print_progress(
-                    f"Calc assoc with perm between {
-                        os.path.basename(pheno_file[0])
-                    } and {os.path.basename(file)}",
-                    len(outputs) * len(pheno_files),
-                    pheno_index * len(outputs) + file_index + 1
-                )
-                output_name = os.path.join(
-                    "assoc_results",
-                    f"{os.path.basename(file)}_{
-                        pheno_file[0]}",
-                )
-                res = association_analysis.quantitative_association(
-                    fm.plink,
-                    file,
-                    pheno_file[0],
-                    pheno_file[1],
-                    output_name,
-                    gender=gender,
-                    ethnic=ethnic,
-                    mperm=mperm
-                )
-                if res:
-                    output_cache2.append(
-                        (gender, ethnic, pheno_file[0], output_name,)
-                    )
-        # with ProcessPoolExecutor(max_workers=2) as pool:
-        #             futures = []
-        #             for pheno_index, pheno_file in enumerate(pheno_files):
-        #                 for(file_index, (gender, ethnic, file)) in enumerate(outputs):
-        #                     pool.submit(
-        #                         progress_bar.print_progress,
-        #                             f"Calc assoc with perm between {
-        #                                 os.path.basename(pheno_file[0])
-        #                             } and {os.path.basename(file)}",
-        #                             len(outputs) * len(pheno_files),
-        #                             pheno_index * len(outputs) + file_index + 1
-        #                         )
-        #                     output_name = os.path.join(
-        #                         "assoc_results",
-        #                         f"{os.path.basename(file)}_{
-        #                             pheno_file[0]}",
-        #                     )
-        #                     future = pool.submit(
-        #                         association_analysis.assoc_perm,
-        #                         fm.plink,
-        #                         file,
-        #                         pheno_file[1],
-        #                         output_name,
-        #                         mperm=mperm
-        #                     )
-        #                     futures.append(future)
-        #                     # if res:
-        #                     output_cache2.append(
-        #                         (gender, ethnic, pheno_file[0], output_name,)
-        #                     )
-        #             output_cache2 = [output_cache2[i] for i, future in enumerate(futures) if future.result()==True]
+            # for(file_index, (gender, ethnic, file)) in enumerate(outputs):
+            #     progress_bar.print_progress(
+            #         f"Calc assoc with perm between {
+            #             os.path.basename(pheno_file[0])
+            #         } and {os.path.basename(file)}",
+            #         len(outputs) * len(pheno_files),
+            #         pheno_index * len(outputs) + file_index + 1
+            #     )
+            #     output_name = os.path.join(
+            #         "assoc_results",
+            #         f"{os.path.basename(file)}_{
+            #             pheno_file[0]}",
+            #     )
+            #     res = association_analysis.quantitative_association(
+            #         fm.plink,
+            #         file,
+            #         pheno_file[0],
+            #         pheno_file[1],
+            #         output_name,
+            #         gender=gender,
+            #         ethnic=ethnic,
+            #         mperm=mperm
+            #     )
+            #     if res:
+            #         output_cache2.append(
+            #             (gender, ethnic, pheno_file[0], output_name,)
+            #         )
+            with ProcessPoolExecutor(max_workers=int(cpu_count()*2/3)) as pool:
+                futures = []
+                for pheno_index, pheno_file in enumerate(pheno_files):
+                    for(file_index, (gender, ethnic, file)) in enumerate(outputs):
+                        pool.submit(
+                            progress_bar.print_progress,
+                                f"Calc assoc with perm between {
+                                    os.path.basename(pheno_file[0])
+                                } and {os.path.basename(file)}",
+                                len(outputs) * len(pheno_files),
+                                pheno_index * len(outputs) + file_index + 1
+                            )
+                        output_name = os.path.join(
+                            "assoc_results",
+                            f"{os.path.basename(file)}_{
+                                pheno_file[0]}",
+                        )
+                        future = pool.submit(
+                            association_analysis.assoc_perm,
+                            fm.plink,
+                            file,
+                            pheno_file[1],
+                            output_name,
+                            mperm=mperm
+                        )
+                        futures.append(future)
+                        # if res:
+                        output_cache2.append(
+                            (gender, ethnic, pheno_file[0], output_name,)
+                        )
+                output_cache2 = [output_cache2[i] for i, future in enumerate(futures) if future.result()==True]
 
 
     else:
