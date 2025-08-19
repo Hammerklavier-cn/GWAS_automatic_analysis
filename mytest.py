@@ -5,6 +5,7 @@ import functools
 from typing import Callable, Any
 
 from Classes import Gender
+from myutil import association_analysis
 from myutil.small_tools import count_line
 from myutil.visualisations import assoc_mperm_visualisation, assoc_visualisation
 from myutil.quality_control import ld_pruning
@@ -122,6 +123,22 @@ class Test02Analysis(unittest.TestCase):
 
         if count != INDEPENDENT_SNP_NUMs:
             self.fail("Line count does not match the expected INDEPENDENT_SNP_NUMs")
+
+    @timing_decorator
+    def test_10_binary_phenotype_phenotype_file_judge(self):
+
+        quantitative_phenoytype_file = "test_data/STAB2_standardised_f.30820.0.0.tsv"
+        if not os.path.exists(quantitative_phenoytype_file):
+            self.fail(f"Expected file not found at {quantitative_phenoytype_file}")
+        binary_phenotype_file = "test_data/I21_Acute_myocardial_infarction.tsv"
+        if not os.path.exists(binary_phenotype_file):
+            self.fail(f"Expected file not found at {binary_phenotype_file}")
+
+        if res := association_analysis.classify_phenotype_type(quantitative_phenoytype_file) != "quantitative":
+            self.fail(f"{quantitative_phenoytype_file} is a quantitative phenotype, but classified as {res}")
+
+        if res := association_analysis.classify_phenotype_type(binary_phenotype_file) != "binary":
+            self.fail(f"{binary_phenotype_file} is a binary phenotype, but classified as {res}")
 
     @classmethod
     def tearDownClass(cls) -> None:
