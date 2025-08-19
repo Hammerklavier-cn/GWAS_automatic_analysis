@@ -12,13 +12,72 @@ import polars as pl
 
 logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
+def classify_phenotype_type(
+    phenotype_info_path: str,
+    has_header=False
+) -> Literal["binary", "quantitative"]:
+    """
+    Classify the phenotype type based on the given phenotype information file.
+
+    The `phenotype information file` should consist of three columns:
+        FID
+        IID
+        Phenotype
+
+    Args:
+        phenotype_info_path (str):
+            Path to the phenotype information file.
+        has_header (bool):
+            Whether the phenotype information file has a header.
+
+    Returns:
+        Literal["binary", "quantitative"]:
+            The phenotype type.
+    """
+
+    # Read the phenotype information file
+    df = pl.read_csv(
+        phenotype_info_path,
+        separator="\t",
+        has_header=has_header,
+        infer_schema=False,
+        null_values=["Na", "NaN", "NA", "NAN", "na", "nan", ""]
+    )
+
+    if df.width != 3:
+        raise ValueError(
+            f"Expected 3 columns in phenotype information file, got {df.width}: {df.columns}"
+        )
+
+    df.columns = ["FID", "IID", "Phenotype"]
+
+    df = df.cast({"Phenotype": pl.Float32}, strict=False)
+
+    is_binary_sr = df.select(
+        pl.when(
+            pl.col("Phenotype").is_in([-9., 0., 1., 2.])
+        ).then(
+            0
+        ).otherwise(
+            1
+        ).alias("is_binary_df")
+    ).to_series()
+
+    is_binary_sum = is_binary_sr.sum()
+
+    if is_binary_sum > 0:
+        return "quantitative"
+    else:
+        return "binary"
+
+
 def binary_association(
     plink_path: str,
     input_name: str,
     phenotype_info_path: str,
     output_prefix: str,
     mperm: int | None = None,
-) -> None:
+) -> bool:
     """
     Perform a binary association analysis on the given input file.
 
@@ -40,31 +99,32 @@ def binary_association(
         mperm (int | None):
             Number of permutations to perform.
 
+    Returns:
+        bool:
+            True if the analysis was successful, False otherwise.
     """
 
     logging.info("Performing binary association analysis...")
     command = [
         plink_path,
-        "--bfile",
-        input_name,
-        "--pheno",
-        phenotype_info_path,
+        "--bfile", input_name,
+        "--pheno", phenotype_info_path,
         "--assoc",
     ] + (
         [] if mperm is None
-        else [
-            "--mperm",
-            str(mperm)
-        ]
+        else ["--mperm", str(mperm)]
     ) + [
-        "--out",
-        output_prefix
+        "--out", output_prefix
     ]
 
-    match
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error running plink: {e}")
+        return False
 
+    return True
 
-    pass
 
 def quantitative_association(
     plink_path: str,
