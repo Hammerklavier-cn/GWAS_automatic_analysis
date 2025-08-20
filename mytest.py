@@ -76,10 +76,12 @@ class Test02Analysis(unittest.TestCase):
         for extension in [".bed", ".fam", ".bim"]:
             file_name = f"STAB2_white_male_filtered{extension}"
             if not os.path.exists(os.path.join("test_data", file_name)):
-                raise FileNotFoundError(f'File "{file_name}" not found.' "")
+                raise FileNotFoundError(f'File "{file_name}" not found.')
 
         if not os.path.exists(os.path.join("test_data", "ld_prune")):
             os.mkdir(os.path.join("test_data", "ld_prune"))
+
+        os.makedirs("test_data/", exist_ok=True)
 
     @timing_decorator
     def test_01_ld_pruning(self):
@@ -234,6 +236,7 @@ class Test04AssociationAnalysis(unittest.TestCase):
             if not os.path.exists(file):
                 raise FileNotFoundError(f"{file} not found.")
 
+    @timing_decorator
     def test_02_qassoc(self):
 
         if FAST >= 2:
