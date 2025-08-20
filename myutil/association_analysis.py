@@ -10,7 +10,6 @@ from typing import Literal
 import pandas as pd
 import polars as pl
 
-logger = small_tools.create_logger("AssociationLogger", level=logging.WARN)
 
 def classify_phenotype_type(
     phenotype_info_path: str,
@@ -118,7 +117,7 @@ def binary_association(
     ]
 
     try:
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running plink: {e}")
         return False
@@ -159,7 +158,7 @@ def quantitative_association(
         tuple (tuple[str, str, str, str] | None):
             (gender, ethnic, phenotype name, path name of the output file)
     """
-    logger.info("Performing quantitative association analysis...")
+    logging.info("Performing quantitative association analysis...")
     try:
         command = (
             [
@@ -188,13 +187,13 @@ def quantitative_association(
             stderr=None
         )
     except subprocess.CalledProcessError as e:
-        logger.warning(f"Error occurred while running plink: {e}")
+        logging.warning(f"Error occurred while running plink: {e}")
         return
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         logging.error(f"Command line: {' '.join(command)}") # type: ignore
         raise e
-    logger.info("Quantitative association analysis completed.")
+    logging.info("Quantitative association analysis completed.")
     return gender, ethnic, phenotype_name, output_name
 
 # def assoc_perm(
@@ -229,7 +228,7 @@ def quantitative_association(
 #         res_flag (bool):
 #             True if the function is performed successfully, otherwise False.
 #     """
-#     logger.info("Performing quantitative association analysis with permutation tests.")
+#     logging.info("Performing quantitative association analysis with permutation tests.")
 #     command = [
 #         plink_path,
 #         "--bfile", input_name,
@@ -245,7 +244,7 @@ def quantitative_association(
 #             stderr=subprocess.DEVNULL,
 #         )
 #     except subprocess.CalledProcessError as e:
-#         logger.warning(f"Error occurred while running plink --assoc: {e}")
+#         logging.warning(f"Error occurred while running plink --assoc: {e}")
 #         return False
 #     except Exception as e:
 #         print(f"An unexpected error occurred while running plink --assoc: {e}")
@@ -271,7 +270,7 @@ def result_filter(
     # Find .assoc or .qassoc file.
     if os.path.exists(f"{input_path}.qassoc"):
 
-        logger.info("Get {input_path}.qassoc, which is a .qassoc file")
+        logging.info("Get {input_path}.qassoc, which is a .qassoc file")
         # purge duplicated whitespace
         with open(f"{input_path}.qassoc") as reader:
             content = reader.read().strip()
@@ -293,7 +292,7 @@ def result_filter(
             ).drop_nulls()
 
             if len(qassoc_df) == 0:
-                logger.warning("No valid data found in .qassoc file")
+                logging.warning("No valid data found in .qassoc file")
                 return None
 
         # qassoc_df.columns = [x.strip() for x in qassoc_df.columns]
@@ -316,7 +315,7 @@ def result_filter(
 
     elif os.path.exists(f"{input_path}.assoc"):
 
-        logger.info("Get {input_path}.assoc, which is a .assoc file")
+        logging.info("Get {input_path}.assoc, which is a .assoc file")
 
         with open(f"{input_path}.assoc") as reader:
             content = reader.read().strip()
@@ -352,7 +351,7 @@ def result_filter(
 
         return gender, ethnic, phenotype, "assoc", filtered_df
     else:
-        logger.warning("Neither .assoc nor .qassoc file found for input path: %s", input_path)
+        logging.warning("Neither .assoc nor .qassoc file found for input path: %s", input_path)
         return None
 
     pass
@@ -369,7 +368,7 @@ def result_filter_old(
     err_2_p: float = 0.05
 ) -> tuple[str|None, str|None, str|None, pd.DataFrame] | None:
     if not os.path.exists(f"{input_path}.qassoc"):
-        logger.error("Input file does not exist: %s", f"{input_path}.qassoc")
+        logging.error("Input file does not exist: %s", f"{input_path}.qassoc")
         """Note: There are two kinds of result files, one with extension .assoc, and one with .qassoc."""
         return
 
@@ -418,7 +417,7 @@ def linear_regression(
     Generate Files:
         %(output_name)s.assoc.linear
     """
-    logger.info(
+    logging.info(
         "Performing a linear regression analysis using PLINK for a quantitive phenotype `%s`\
 within %s %s population...", phenotype_name, gender.value, ethnic
     )
@@ -458,7 +457,7 @@ def multidimensional_scaling(
     Generate File:
         %(output_path)
     """
-    logger.info("Perform a multidimensional scaling analysis using PLINK for a quantitive or binary phenotype")
+    logging.info("Perform a multidimensional scaling analysis using PLINK for a quantitive or binary phenotype")
     command = [
         plink_path,
         "--bfile", input_name,
@@ -473,12 +472,12 @@ def multidimensional_scaling(
         stderr=subprocess.DEVNULL,
         check=True
     )
-    logger.info(
+    logging.info(
         "Finished calculating multidimensional scaling analysis between %s and %s.",
         phenotype_name,
         input_name
     )
-    logger.debug("Transferring file to `--covar`` format")
+    logging.debug("Transferring file to `--covar`` format")
     mds_result_lf = pl.scan_csv(
         f"{input_name}_{phenotype_name}.mds",
         separator="\t",
