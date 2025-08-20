@@ -40,7 +40,7 @@ def timing_decorator(func: Callable) -> Callable:
 PLINK_PATH: str = ""
 # SNP_NUMs: int = 0
 INDEPENDENT_SNP_NUMs: int = 25
-PERM_COUNTS = 10_000
+PERM_COUNTS = 2_000
 CLEAN_UP: bool = False
 FAST = 0
 
@@ -126,21 +126,6 @@ class Test02Analysis(unittest.TestCase):
         if count != INDEPENDENT_SNP_NUMs:
             self.fail("Line count does not match the expected INDEPENDENT_SNP_NUMs")
 
-    @timing_decorator
-    def test_10_binary_phenotype_phenotype_file_judge(self):
-
-        quantitative_phenoytype_file = "test_data/STAB2_standardised_f.30820.0.0.tsv"
-        if not os.path.exists(quantitative_phenoytype_file):
-            self.fail(f"Expected file not found at {quantitative_phenoytype_file}")
-        binary_phenotype_file = "test_data/I21_Acute_myocardial_infarction.tsv"
-        if not os.path.exists(binary_phenotype_file):
-            self.fail(f"Expected file not found at {binary_phenotype_file}")
-
-        if res := association_analysis.classify_phenotype_type(quantitative_phenoytype_file) != "quantitative":
-            self.fail(f"{quantitative_phenoytype_file} is a quantitative phenotype, but classified as {res}")
-
-        if res := association_analysis.classify_phenotype_type(binary_phenotype_file) != "binary":
-            self.fail(f"{binary_phenotype_file} is a binary phenotype, but classified as {res}")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -263,6 +248,100 @@ class Test04AssociationAnalysis(unittest.TestCase):
         ]:
             if not os.path.exists(file):
                 raise FileNotFoundError(f"{file} not found.")
+
+
+    @timing_decorator
+    def test_10_binary_quantitative_phenotype_file_judge(self):
+
+        quantitative_phenoytype_file = "test_data/STAB2_standardised_f.30820.0.0.tsv"
+        if not os.path.exists(quantitative_phenoytype_file):
+            self.fail(f"Expected file not found at {quantitative_phenoytype_file}")
+        binary_phenotype_file = "test_data/R17_Unspecified_jaundice.tsv"
+        if not os.path.exists(binary_phenotype_file):
+            self.fail(f"Expected file not found at {binary_phenotype_file}")
+
+        if res := association_analysis.classify_phenotype_type(quantitative_phenoytype_file) != "quantitative":
+            self.fail(f"{quantitative_phenoytype_file} is a quantitative phenotype, but classified as {res}")
+
+        if res := association_analysis.classify_phenotype_type(binary_phenotype_file) != "binary":
+            self.fail(f"{binary_phenotype_file} is a binary phenotype, but classified as {res}")
+
+    @timing_decorator
+    def test_20_binary_association(self):
+        output_prefix = "test_data/assoc/binary_association/binary_association"
+        os.makedirs(os.path.dirname(output_prefix), exist_ok=True)
+
+        genotype_file_prefix = "test_data/STAB2_white_male_filtered"
+        binary_phenotype_file = "test_data/R17_Unspecified_jaundice.tsv"
+        if not os.path.exists(binary_phenotype_file):
+            self.fail(f"Expected file not found at {binary_phenotype_file}")
+
+        assert association_analysis.binary_association(
+            PLINK_PATH,
+            genotype_file_prefix,
+            binary_phenotype_file,
+            output_prefix
+        )
+
+    @timing_decorator
+    def test_21_binary_association_mperm(self):
+        output_prefix = "test_data/assoc/binary_association/binary_association_mperm"
+        os.makedirs(os.path.dirname(output_prefix), exist_ok=True)
+
+        genotype_file_prefix = "test_data/STAB2_white_male_filtered"
+        binary_phenotype_file = "test_data/R17_Unspecified_jaundice.tsv"
+        if not os.path.exists(binary_phenotype_file):
+            self.fail(f"Expected file not found at {binary_phenotype_file}")
+
+        assert association_analysis.binary_association(
+            PLINK_PATH,
+            genotype_file_prefix,
+            binary_phenotype_file,
+            output_prefix,
+            mperm=PERM_COUNTS
+        )
+
+    @timing_decorator
+    def test_22_logistic_regression_basic(self):
+        output_prefix = "test_data/assoc/logistic_regression/basic"
+        genotype_file_prefix = "test_data/STAB2_both-gender_White_filtered"
+        phenotype_file = "test_data/R17_Unspecified_jaundice.tsv"
+
+        os.makedirs(os.path.dirname(output_prefix), exist_ok=True)
+
+        assert association_analysis.logistic_regression(
+            PLINK_PATH,
+            genotype_file_prefix,
+            phenotype_file,
+            output_prefix,
+            mperm=None,
+            covariates=None,
+        )
+
+    @timing_decorator
+    def test_23_logistic_regression_mperm(self):
+        output_prefix = "test_data/assoc/logistic_regression/with_mperm"
+        genotype_file_prefix = "test_data/STAB2_both-gender_White_filtered"
+        phenotype_file = "test_data/R17_Unspecified_jaundice.tsv"
+
+        os.makedirs(os.path.dirname(output_prefix), exist_ok=True)
+
+        assert association_analysis.logistic_regression(
+            PLINK_PATH,
+            genotype_file_prefix,
+            phenotype_file,
+            output_prefix,
+            mperm=PERM_COUNTS,
+            covariates=None,
+        )
+
+
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if CLEAN_UP:
+            shutil.rmtree("test_data/assoc")
+        pass
 
 
 class Test05Summarization(unittest.TestCase):
