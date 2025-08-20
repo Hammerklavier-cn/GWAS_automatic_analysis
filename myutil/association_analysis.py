@@ -11,6 +11,11 @@ import pandas as pd
 import polars as pl
 
 
+class Covariant(Enum):
+    SEX = auto()
+    AGE = auto()
+
+
 def classify_phenotype_type(
     phenotype_info_path: str,
     has_header=False
@@ -195,6 +200,54 @@ def quantitative_association(
         raise e
     logging.info("Quantitative association analysis completed.")
     return gender, ethnic, phenotype_name, output_name
+
+def logistic_regression(
+    plink_path: str,
+    input_prefix: str,
+    phenotype_info_file: str,
+    output_prefix: str,
+    *,
+    covariates: str | None = None,
+    mperm: int | None = None,
+) -> bool:
+    """
+    Perform a logistic regression analysis on the given input plink file and phenotype file.
+    Plink command-line tool is used to perform the analysis.
+
+Args:
+    plink_path (str):
+        Path to the plink executable file.
+    input_prefix (str):
+        Prefix of the input plink binary files.
+    phenotype_info_file (str):
+        Path to the phenotype information file.
+    output_prefix (str):
+        Prefix for the output files.
+    covariates (str | None, optional):
+        Covariates files to include in the analysis. Defaults to None.
+    mperm (int | None, optional):
+        Number of permutations to perform. Defaults to None.
+
+Returns:
+    bool:
+        True if the analysis was successful, False otherwise.
+    """
+
+    command = [
+        plink_path,
+        "--bfile", input_prefix,
+        # force sex to be included as an covariant; include intercept in the report
+        "--logistic", "intercept", "sex", "hide-covar"
+    ] + (["--mperm", str(mperm)] if mperm else []) + \
+    (["--covar", covariates, "keep-pheno-on-missing-cov"] if covariates else []) + \
+    ["--pheno", phenotype_info_file] + \
+    ["--out", output_prefix]
+
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        return False
+    return True
 
 # def assoc_perm(
 #     plink_path: str,
