@@ -11,11 +11,6 @@ import pandas as pd
 import polars as pl
 
 
-class Covariant(Enum):
-    SEX = auto()
-    AGE = auto()
-
-
 def classify_phenotype_type(
     phenotype_info_path: str,
     has_header=False

@@ -25,7 +25,6 @@ python3 ../main.py \
     --ethnic-reference "${ethnic_ref}" \
     --gender "${gender}" \
     --gender-reference "${gender_ref}" \
-    --divide-pop-by-gender \
     --ld-correct \
     --perm 10_000
 
