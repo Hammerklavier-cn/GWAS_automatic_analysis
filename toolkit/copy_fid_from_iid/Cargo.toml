@@ -1,0 +1,12 @@
+[package]
+name = "copy_fid_from_iid"
+version = "0.1.0"
+edition = "2024"
+authors = ["Hammerklavier-cn <q5vsx3@163.com>"]
+description = "A tool to generate FID column by copying IID column"
+
+[dependencies]
+clap = { version = "4.5.38", features = ["derive"] }
+log = { version = "0.4" }
+env_logger = "0.11"
+polars = { version = "0.50", features = ["avx512", "lazy"] }
